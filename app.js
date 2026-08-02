@@ -130,6 +130,11 @@ function wireTimeMask(el){
     }
   });
 }
+function fmtDate(d){
+  if(!d) return '';
+  const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : d;
+}
 function fmtMoney(n){
   n = Number(n)||0;
   return 'S$' + n.toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -205,6 +210,7 @@ function renderDashboard(){
 }
 
 // ---------- Jobs table ----------
+let jobFiltersDefaulted = false;
 function populateFilterOptions(){
   const fMonth = document.getElementById('fMonth');
   if(fMonth.options.length<=1){
@@ -213,6 +219,13 @@ function populateFilterOptions(){
   const fDriver = document.getElementById('fDriver');
   if(fDriver.options.length<=1){
     DATA.drivers.map(d=>d.name).sort().forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;fDriver.appendChild(o);});
+  }
+
+  // Default the view to the latest month present in the data, once.
+  if(!jobFiltersDefaulted && DATA.jobs.length){
+    const latestDate = DATA.jobs.map(j=>j.date).filter(Boolean).sort().slice(-1)[0];
+    if(latestDate) fMonth.value = monthKey(latestDate);
+    jobFiltersDefaulted = true;
   }
 }
 
@@ -223,7 +236,7 @@ function renderJobs(){
   const status = document.getElementById('fStatus').value;
   const search = document.getElementById('fSearch').value.toLowerCase();
 
-  let jobs = DATA.jobs.slice().sort((a,b)=> new Date(b.date) - new Date(a.date) || (b.id-a.id));
+  let jobs = DATA.jobs.slice().sort((a,b)=> new Date(a.date) - new Date(b.date) || (a.id-b.id));
   if(month) jobs = jobs.filter(j=>monthKey(j.date)===month);
   if(driver) jobs = jobs.filter(j=>j.driver===driver);
   if(status) jobs = jobs.filter(j=> statusClass(j.paymentStatus) === status.toLowerCase());
@@ -237,7 +250,7 @@ function renderJobs(){
   const tbody = document.querySelector('#jobsTable tbody');
   tbody.innerHTML = pageJobs.length ? pageJobs.map(j=>`
     <tr>
-      <td>${j.date||''}</td>
+      <td>${fmtDate(j.date)}</td>
       <td>${j.invoice||''}</td>
       <td>${j.driver||''}</td>
       <td>${j.jobType||''}</td>
@@ -262,6 +275,7 @@ function updateExportCount(){
   document.getElementById('exportInvoicesBtn').textContent = `Export to QuickBooks (${selectedInvoices.size})`;
 }
 
+let invoiceFiltersDefaulted = false;
 function populateInvoiceFilterOptions(){
   const fYear = document.getElementById('fInvYear');
   const years = [...new Set(DATA.jobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)))].sort();
@@ -273,6 +287,16 @@ function populateInvoiceFilterOptions(){
     MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;fMonth.appendChild(o);});
   }
 
+  // Default the view to the latest month present in the data, once.
+  if(!invoiceFiltersDefaulted && DATA.jobs.length){
+    const latestDate = DATA.jobs.map(j=>j.date).filter(Boolean).sort().slice(-1)[0];
+    if(latestDate){
+      fYear.value = latestDate.slice(0,4);
+      fMonth.value = latestDate.slice(5,7);
+    }
+    invoiceFiltersDefaulted = true;
+  }
+
   const year = fYear.value;
   const month = fMonth.value;
   const fDate = document.getElementById('fInvDate');
@@ -281,7 +305,7 @@ function populateInvoiceFilterOptions(){
   if(year) dates = dates.filter(d=>d.slice(0,4)===year);
   if(month) dates = dates.filter(d=>d.slice(5,7)===month);
   dates.sort();
-  fDate.innerHTML = '<option value="">All Dates</option>' + dates.map(d=>`<option value="${d}">${d}</option>`).join('');
+  fDate.innerHTML = '<option value="">All Dates</option>' + dates.map(d=>`<option value="${d}">${fmtDate(d)}</option>`).join('');
   fDate.value = dates.includes(prevDate) ? prevDate : '';
 }
 
@@ -291,79 +315,27 @@ function renderInvoices(){
   const year = document.getElementById('fInvYear').value;
   const month = document.getElementById('fInvMonth').value;
   const date = document.getElementById('fInvDate').value;
-  const groups = {};
-  DATA.jobs.forEach(j=>{
-    const key = j.invoice || '(no invoice #)';
-    groups[key] = groups[key] || {jobs:[], sales:0};
-    groups[key].jobs.push(j);
-    groups[key].sales += Number(j.cost)||0;
-  });
-  let rows = Object.entries(groups).map(([inv,g])=>{
-    const dates = [...new Set(g.jobs.map(j=>j.date))].sort();
-    const host = g.jobs[0].hostName || '';
-    const company = g.jobs[0].company || '';
-    const statuses = [...new Set(g.jobs.map(j=>j.paymentStatus||'Unpaid'))];
-    return {inv, dates, host, company, count:g.jobs.length, sales:g.sales, statuses};
-  });
+
+  let rows = DATA.jobs.slice();
   if(search){
-    rows = rows.filter(r=>[r.inv,r.host,r.company].some(v=>(v||'').toLowerCase().includes(search)));
+    rows = rows.filter(j=>[j.invoice,j.hostName,j.company,j.details,j.jobType].some(v=>(v||'').toLowerCase().includes(search)));
   }
-  if(year){
-    rows = rows.filter(r=>r.dates.some(d=>d.slice(0,4)===year));
-  }
-  if(month){
-    rows = rows.filter(r=>r.dates.some(d=>d.slice(5,7)===month));
-  }
-  if(date){
-    rows = rows.filter(r=>r.dates.includes(date));
-  }
-  rows.sort((a,b)=> (b.dates[0]||'').localeCompare(a.dates[0]||''));
-  document.getElementById('invCount').textContent = `${rows.length} invoice${rows.length===1?'':'s'}`;
+  if(year) rows = rows.filter(j=>(j.date||'').slice(0,4)===year);
+  if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
+  if(date) rows = rows.filter(j=>j.date===date);
+  rows.sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.id-a.id));
+
+  document.getElementById('invCount').textContent = `${rows.length} record${rows.length===1?'':'s'}`;
   const {items:pageRows, page, totalPages} = paginate('invoices', rows);
-  document.querySelector('#invoicesTable tbody').innerHTML = pageRows.length ? pageRows.map(r=>{
-    const exportable = r.inv !== '(no invoice #)';
-    const checked = selectedInvoices.has(r.inv) ? 'checked' : '';
+  document.querySelector('#invoicesTable tbody').innerHTML = pageRows.length ? pageRows.map(j=>{
+    const inv = j.invoice || '(no invoice #)';
+    const exportable = !!j.invoice;
+    const checked = selectedInvoices.has(inv) ? 'checked' : '';
     return `
     <tr>
-      <td>${exportable ? `<input type="checkbox" class="inv-check" data-inv="${encodeURIComponent(r.inv)}" ${checked}>` : ''}</td>
-      <td>${r.dates.join(', ')}</td>
-      <td>${r.inv}</td>
-      <td>${r.host}${r.company?`<div class="small muted">${r.company}</div>`:''}</td>
-      <td class="num">${r.count}</td>
-      <td class="num">${fmtMoney(r.sales)}</td>
-      <td>${r.statuses.map(s=>`<span class="pill ${statusClass(s)}">${s}</span>`).join(' ')}</td>
-    </tr>`;
-  }).join('') : `<tr><td colspan="7" class="empty">No invoices found</td></tr>`;
-  renderPagination('invoicesPagination', 'invoices', page, totalPages, renderInvoices);
-  const allChecked = pageRows.length>0 && pageRows.every(r=> r.inv==='(no invoice #)' || selectedInvoices.has(r.inv));
-  document.getElementById('invSelectAll').checked = allChecked;
-  updateExportCount();
-
-  renderInvoiceItems(month, year, date, rows.map(r=>r.inv));
-}
-document.getElementById('fInvSearch').addEventListener('input', ()=>{ pageState.invoices=1; pageState.invItems=1; renderInvoices(); });
-document.getElementById('fInvDate').addEventListener('change', ()=>{ pageState.invoices=1; pageState.invItems=1; renderInvoices(); });
-
-function renderInvoiceItems(month, year, date, filteredInvNums){
-  const panel = document.getElementById('invItemsPanel');
-  if(!month && !date){
-    panel.style.display = 'none';
-    return;
-  }
-  const invSet = new Set(filteredInvNums);
-  let items = DATA.jobs.filter(j=> invSet.has(j.invoice || '(no invoice #)'));
-  if(date){
-    items = items.filter(j=>j.date===date);
-  }
-  items = items.slice().sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
-
-  const label = date ? date : (MONTHS[Number(month)-1] + (year ? ' '+year : ''));
-  document.getElementById('invItemsTitle').textContent = `Line Items — ${label} (${items.length} item${items.length===1?'':'s'})`;
-  const {items:pageItems, page, totalPages} = paginate('invItems', items);
-  document.querySelector('#invItemsTable tbody').innerHTML = pageItems.length ? pageItems.map(j=>`
-    <tr>
-      <td>${j.date||''}</td>
-      <td>${j.invoice||''}</td>
+      <td>${exportable ? `<input type="checkbox" class="inv-check" data-inv="${encodeURIComponent(inv)}" ${checked}>` : ''}</td>
+      <td>${fmtDate(j.date)}</td>
+      <td>${inv}</td>
       <td>${j.driver||''}</td>
       <td>${j.jobType||''}</td>
       <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
@@ -373,17 +345,24 @@ function renderInvoiceItems(month, year, date, filteredInvNums){
       <td class="num">${fmtMoney(j.cost)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${j.paymentStatus||'Unpaid'}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
-    </tr>`).join('') : `<tr><td colspan="11" class="empty">No line items</td></tr>`;
-  renderPagination('invItemsPagination', 'invItems', page, totalPages, ()=>renderInvoiceItems(month, year, date, filteredInvNums));
-  panel.style.display = '';
+    </tr>`;
+  }).join('') : `<tr><td colspan="12" class="empty">No records found</td></tr>`;
+  renderPagination('invoicesPagination', 'invoices', page, totalPages, renderInvoices);
+  const checkable = [...document.querySelectorAll('.inv-check')];
+  document.getElementById('invSelectAll').checked = checkable.length>0 && checkable.every(c=>c.checked);
+  updateExportCount();
 }
-document.getElementById('fInvYear').addEventListener('change', ()=>{ pageState.invoices=1; pageState.invItems=1; renderInvoices(); });
-document.getElementById('fInvMonth').addEventListener('change', ()=>{ pageState.invoices=1; pageState.invItems=1; renderInvoices(); });
+document.getElementById('fInvSearch').addEventListener('input', ()=>{ pageState.invoices=1; renderInvoices(); });
+document.getElementById('fInvDate').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
+document.getElementById('fInvYear').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
+document.getElementById('fInvMonth').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
 
 document.querySelector('#invoicesTable tbody').addEventListener('change', e=>{
   if(e.target.matches('.inv-check')){
     const inv = decodeURIComponent(e.target.dataset.inv);
     if(e.target.checked) selectedInvoices.add(inv); else selectedInvoices.delete(inv);
+    // Sync other rows sharing the same invoice # on this page.
+    document.querySelectorAll(`.inv-check[data-inv="${e.target.dataset.inv}"]`).forEach(c=>c.checked = e.target.checked);
     updateExportCount();
     document.getElementById('invSelectAll').checked = [...document.querySelectorAll('.inv-check')].every(c=>c.checked);
   }
@@ -723,19 +702,43 @@ document.getElementById('f_client').addEventListener('change', (e)=>{
   }
 });
 
-// Driver keeps $10 deducted per billed unit (hour/trip/stop) as the company fund cut.
+// For these drivers, Company Fund auto-calculates as $10 per billed unit (hour/trip/stop);
+// Driver Payout is always editable, pre-filled with a suggestion for these drivers only.
 const PAYOUT_DEDUCTION_PER_UNIT = 10;
+const SPECIAL_FUND_DRIVERS = new Set(['ALAN YONG','SEAN SEAH','ELVIN SAI']);
+function isSpecialFundDriver(name){
+  return SPECIAL_FUND_DRIVERS.has((name||'').trim().toUpperCase());
+}
 
 function recalc(){
   const qty = Number(document.getElementById('f_qty').value)||0;
   const unitCost = Number(document.getElementById('f_unitCost').value)||0;
   const cost = qty*unitCost;
   document.getElementById('f_cost').value = cost || '';
-  const payout = Math.max(0, cost - (qty*PAYOUT_DEDUCTION_PER_UNIT));
-  document.getElementById('f_payout').value = cost ? payout.toFixed(2) : '';
-  const coyFund = cost - (cost ? payout : 0);
-  document.getElementById('f_coyFund').value = coyFund.toFixed(2);
+
+  const driver = document.getElementById('f_driver').value;
+  const coyFundEl = document.getElementById('f_coyFund');
+  const payoutEl = document.getElementById('f_payout');
+  const coyFundHint = document.getElementById('coyFundHint');
+  const payoutHint = document.getElementById('payoutHint');
+
+  if(isSpecialFundDriver(driver)){
+    const coyFund = qty * PAYOUT_DEDUCTION_PER_UNIT;
+    coyFundEl.readOnly = true;
+    coyFundEl.style.background = '#f5f6f8';
+    coyFundEl.value = coyFund.toFixed(2);
+    coyFundHint.style.display = '';
+    const payout = Math.max(0, cost - coyFund);
+    payoutEl.value = cost ? payout.toFixed(2) : '';
+    payoutHint.style.display = '';
+  } else {
+    coyFundEl.readOnly = false;
+    coyFundEl.style.background = '#fff';
+    coyFundHint.style.display = 'none';
+    payoutHint.style.display = 'none';
+  }
 }
+document.getElementById('f_driver').addEventListener('change', recalc);
 ['f_qty','f_unitCost'].forEach(id=>document.getElementById(id).addEventListener('input', recalc));
 
 // For HOURLY job types, derive Qty from Start/End time (billed in whole-hour blocks, rounded up)
@@ -864,6 +867,11 @@ function openJobModal(id){
   document.getElementById('f_cost').value = job?.cost ?? '';
   document.getElementById('f_payout').value = job?.driverPayout ?? '';
   document.getElementById('f_coyFund').value = job?.coyFund ?? 0;
+  const isSpecial = isSpecialFundDriver(job?.driver);
+  document.getElementById('f_coyFund').readOnly = isSpecial;
+  document.getElementById('f_coyFund').style.background = isSpecial ? '#f5f6f8' : '#fff';
+  document.getElementById('coyFundHint').style.display = isSpecial ? '' : 'none';
+  document.getElementById('payoutHint').style.display = isSpecial ? '' : 'none';
   document.getElementById('f_status').value = job?.paymentStatus || 'Unpaid';
   document.getElementById('f_remarks').value = job?.remarks || '';
   toggleQtyHint();
