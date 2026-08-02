@@ -261,7 +261,7 @@ function extractCostCentre(text){
 }
 
 async function loadDrivers(){
-  const {data} = await sb.from('drivers').select('name').order('name');
+  const {data} = await sb.from('drivers').select('name, active').eq('active', true).order('name');
   const names = data ? [...new Set(data.map(d=>d.name))] : [];
   fillSelect(document.getElementById('f_driver'), names, '— select driver —');
 }
@@ -362,7 +362,13 @@ function openEdit(id){
   if(!job) return;
   editingId = id;
   clearMsg();
-  document.getElementById('f_driver').value = job.driver || '';
+  const driverSel = document.getElementById('f_driver');
+  if(job.driver && ![...driverSel.options].some(o=>o.value===job.driver)){
+    const o = document.createElement('option');
+    o.value = job.driver; o.textContent = job.driver;
+    driverSel.appendChild(o);
+  }
+  driverSel.value = job.driver || '';
   document.getElementById('f_date').value = job.date || '';
   document.getElementById('f_jobType').value = job.jobType || '';
   refreshVehicleField(job.jobType, job.vehicle);

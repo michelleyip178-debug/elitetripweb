@@ -208,7 +208,7 @@ function fillSelect(sel, values, placeholder){
 
 async function loadDrivers(){
   const sel = document.getElementById('f_driver');
-  const {data, error} = await sb.from('drivers').select('name').order('name');
+  const {data, error} = await sb.from('drivers').select('name, active').eq('active', true).order('name');
   if(error || !data){
     sel.innerHTML = '<option value="">Could not load drivers</option>';
     return;

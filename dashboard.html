@@ -122,12 +122,13 @@
     </div>
     <div class="toolbar">
       <input type="search" id="fDriverSearch" placeholder="Search name, vehicle, plate…">
+      <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);"><input type="checkbox" id="fShowDeactivated" style="width:auto;"> Show deactivated</label>
       <div class="spacer"></div>
       <button class="btn" id="addDriverBtn">+ New Driver</button>
     </div>
     <div class="panel" style="overflow:auto;max-height:75vh;">
       <table id="driversTable">
-        <thead><tr><th>Driver</th><th>Vehicle</th><th>Plate</th><th>Phone</th><th>Payout Rate</th><th class="num">Jobs (2026)</th><th class="num">Total Payout</th><th></th></tr></thead>
+        <thead><tr><th>Driver</th><th>Vehicle</th><th>Plate</th><th>Phone</th><th>Payout Rate</th><th class="num">Jobs (2026)</th><th class="num">Total Payout</th><th>Status</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -242,9 +243,10 @@
       <div><label>Plate</label><input type="text" id="d_plate"></div>
       <div><label>Phone</label><input type="text" id="d_phone"></div>
       <div><label>Payout Rate / Note</label><input type="text" id="d_rateNote"></div>
+      <div class="full"><label style="display:inline-flex;align-items:center;gap:6px;text-transform:none;font-size:13px;"><input type="checkbox" id="d_active" style="width:auto;" checked> Active (shown in driver dropdowns)</label></div>
     </div>
     <div class="form-actions">
-      <button class="btn danger" id="deleteDriverBtn" style="display:none;margin-right:auto;">Delete</button>
+      <button class="btn danger" id="deactivateDriverBtn" style="display:none;margin-right:auto;">Deactivate</button>
       <button class="btn secondary" id="cancelDriverBtn">Cancel</button>
       <button class="btn" id="saveDriverBtn">Save Driver</button>
     </div>

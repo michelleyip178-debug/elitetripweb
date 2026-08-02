@@ -576,15 +576,20 @@ function renderPinnedDrivers(byDriver){
 
 function renderDrivers(){
   const search = document.getElementById('fDriverSearch').value.toLowerCase();
+  const showDeactivated = document.getElementById('fShowDeactivated').checked;
   const byDriver = computeDriverStats();
   renderPinnedDrivers(byDriver);
   let rows = DATA.drivers.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  if(!showDeactivated){
+    rows = rows.filter(d=>d.active !== false);
+  }
   if(search){
     rows = rows.filter(d=>[d.name,d.vehicle,d.plate,d.phone].some(v=>(v||'').toLowerCase().includes(search)));
   }
   const {items:pageRows, page, totalPages} = paginate('drivers', rows);
   document.querySelector('#driversTable tbody').innerHTML = pageRows.length ? pageRows.map(d=>{
     const stat = byDriver[(d.name||'').trim().toUpperCase()] || {jobs:0,payout:0};
+    const isActive = d.active !== false;
     return `<tr>
       <td>${d.name}</td>
       <td>${d.vehicle||''}</td>
@@ -593,23 +598,28 @@ function renderDrivers(){
       <td>${d.rateNote!=null?d.rateNote:''}</td>
       <td class="num">${stat.jobs}</td>
       <td class="num">${fmtMoney(stat.payout)}</td>
+      <td><span class="pill ${isActive?'paid':'unpaid'}">${isActive?'Active':'Inactive'}</span></td>
       <td class="row-actions"><button onclick="openDriverModal(${d.id})">Edit</button></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="8" class="empty">No drivers found</td></tr>`;
+  }).join('') : `<tr><td colspan="9" class="empty">No drivers found</td></tr>`;
   renderPagination('driversPagination', 'drivers', page, totalPages, renderDrivers);
 }
 document.getElementById('fDriverSearch').addEventListener('input', ()=>{ pageState.drivers=1; renderDrivers(); });
+document.getElementById('fShowDeactivated').addEventListener('change', ()=>{ pageState.drivers=1; renderDrivers(); });
 
 function openDriverModal(id){
   editingDriverId = id || null;
   const d = id ? DATA.drivers.find(x=>x.id===id) : null;
   document.getElementById('driverModalTitle').textContent = d ? 'Edit Driver' : 'New Driver';
-  document.getElementById('deleteDriverBtn').style.display = d ? '' : 'none';
+  const deactivateBtn = document.getElementById('deactivateDriverBtn');
+  deactivateBtn.style.display = d ? '' : 'none';
+  deactivateBtn.textContent = (d && d.active === false) ? 'Activate' : 'Deactivate';
   document.getElementById('d_name').value = d?.name || '';
   document.getElementById('d_vehicle').value = d?.vehicle || '';
   document.getElementById('d_plate').value = d?.plate || '';
   document.getElementById('d_phone').value = d?.phone || '';
   document.getElementById('d_rateNote').value = d?.rateNote ?? '';
+  document.getElementById('d_active').checked = d ? d.active !== false : true;
   document.getElementById('driverModalBg').classList.add('active');
 }
 function closeDriverModal(){
@@ -627,6 +637,7 @@ document.getElementById('saveDriverBtn').addEventListener('click', async ()=>{
     plate: document.getElementById('d_plate').value.trim(),
     phone: document.getElementById('d_phone').value.trim(),
     rateNote: document.getElementById('d_rateNote').value.trim(),
+    active: document.getElementById('d_active').checked,
   };
   if(!driver.name){ alert('Please enter a driver name.'); return; }
   if(editingDriverId){
@@ -642,12 +653,13 @@ document.getElementById('saveDriverBtn').addEventListener('click', async ()=>{
   closeDriverModal();
   renderAll();
 });
-document.getElementById('deleteDriverBtn').addEventListener('click', async ()=>{
+document.getElementById('deactivateDriverBtn').addEventListener('click', async ()=>{
   if(!editingDriverId) return;
-  if(!confirm('Delete this driver?')) return;
-  const {error} = await sb.from('drivers').delete().eq('id', editingDriverId);
-  if(error){ alert('Delete failed: '+error.message); return; }
-  DATA.drivers = DATA.drivers.filter(d=>d.id!==editingDriverId);
+  const d = DATA.drivers.find(x=>x.id===editingDriverId);
+  const nextActive = d.active === false;
+  const {error} = await sb.from('drivers').update({active: nextActive}).eq('id', editingDriverId);
+  if(error){ alert('Update failed: '+error.message); return; }
+  d.active = nextActive;
   closeDriverModal();
   renderAll();
 });
@@ -741,8 +753,10 @@ function fillSelect(sel, values, placeholder){
   sel.innerHTML = (placeholder?`<option value="">${placeholder}</option>`:'') + values.map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('');
 }
 
-function setupModalOptions(){
-  fillSelect(document.getElementById('f_driver'), DATA.drivers.map(d=>d.name).sort(), '— select driver —');
+function setupModalOptions(currentDriverName){
+  const driverNames = DATA.drivers.filter(d=>d.active !== false).map(d=>d.name);
+  if(currentDriverName && !driverNames.includes(currentDriverName)) driverNames.push(currentDriverName);
+  fillSelect(document.getElementById('f_driver'), driverNames.sort(), '— select driver —');
   fillSelect(document.getElementById('f_jobType'), DATA.jobTypes, '— select job type —');
   fillSelect(document.getElementById('f_client'), DATA.clients.map(c=>c.hostName).sort(), '— select or leave blank —');
 }
@@ -899,7 +913,7 @@ function openJobModal(id){
   const job = id ? DATA.jobs.find(j=>j.id===id) : null;
   document.getElementById('jobModalTitle').textContent = job ? 'Edit Job' : 'New Job';
   document.getElementById('deleteJobBtn').style.display = job ? '' : 'none';
-  setupModalOptions();
+  setupModalOptions(job?.driver);
 
   document.getElementById('f_date').value = job?.date || '';
   document.getElementById('f_invoice').value = job?.invoice || '';
