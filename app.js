@@ -544,22 +544,47 @@ document.getElementById('exportInvoicesBtn').addEventListener('click', ()=>{
 });
 
 // ---------- Drivers ----------
-function renderDrivers(){
-  const search = document.getElementById('fDriverSearch').value.toLowerCase();
+const KEY_DRIVERS = ['ALAN YONG','ELVIN SAI','SEAN SEAH','ALAN TOH'];
+function computeDriverStats(){
   const byDriver = {};
   DATA.jobs.forEach(j=>{
     if(!j.driver) return;
-    byDriver[j.driver] = byDriver[j.driver] || {jobs:0, payout:0};
-    byDriver[j.driver].jobs++;
-    byDriver[j.driver].payout += Number(j.driverPayout)||0;
+    const key = j.driver.trim().toUpperCase();
+    byDriver[key] = byDriver[key] || {jobs:0, payout:0};
+    byDriver[key].jobs++;
+    byDriver[key].payout += Number(j.driverPayout)||0;
   });
+  return byDriver;
+}
+function renderPinnedDrivers(byDriver){
+  const rows = KEY_DRIVERS.map(name=>{
+    const d = DATA.drivers.find(x=>(x.name||'').trim().toUpperCase()===name);
+    const stat = byDriver[name] || {jobs:0,payout:0};
+    return {name, d, stat};
+  });
+  document.querySelector('#pinnedDriversTable tbody').innerHTML = rows.map(({name,d,stat})=>`
+    <tr>
+      <td>${d?.name || name}</td>
+      <td>${d?.vehicle||''}</td>
+      <td>${d?.plate||''}</td>
+      <td>${d?.phone||''}</td>
+      <td>${d?.rateNote!=null?d.rateNote:''}</td>
+      <td class="num">${stat.jobs}</td>
+      <td class="num">${fmtMoney(stat.payout)}</td>
+    </tr>`).join('');
+}
+
+function renderDrivers(){
+  const search = document.getElementById('fDriverSearch').value.toLowerCase();
+  const byDriver = computeDriverStats();
+  renderPinnedDrivers(byDriver);
   let rows = DATA.drivers.slice().sort((a,b)=>a.name.localeCompare(b.name));
   if(search){
     rows = rows.filter(d=>[d.name,d.vehicle,d.plate,d.phone].some(v=>(v||'').toLowerCase().includes(search)));
   }
   const {items:pageRows, page, totalPages} = paginate('drivers', rows);
   document.querySelector('#driversTable tbody').innerHTML = pageRows.length ? pageRows.map(d=>{
-    const stat = byDriver[d.name] || {jobs:0,payout:0};
+    const stat = byDriver[(d.name||'').trim().toUpperCase()] || {jobs:0,payout:0};
     return `<tr>
       <td>${d.name}</td>
       <td>${d.vehicle||''}</td>
