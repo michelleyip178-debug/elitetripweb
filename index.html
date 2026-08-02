@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>EliteSkyline — Job Log</title>
+<style>
+  :root{ --bg:#f5f6f8; --panel:#ffffff; --ink:#1c2230; --muted:#697086; --line:#e3e6ec; --accent:#2f6fed; --accent-ink:#ffffff; --radius:14px; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;}
+  header{padding:40px 20px 20px;text-align:center;}
+  header h1{font-size:24px;margin:0;font-weight:700;}
+  header .sub{font-size:14px;color:var(--muted);margin-top:6px;}
+  main{flex:1;padding:20px;max-width:480px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:16px;}
+  a.card{display:flex;align-items:center;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;text-decoration:none;color:var(--ink);box-shadow:0 1px 2px rgba(20,24,34,.04);}
+  a.card:active{filter:brightness(0.97);}
+  a.card .icon{font-size:28px;flex:0 0 auto;width:50px;height:50px;border-radius:12px;background:#eef1f9;display:flex;align-items:center;justify-content:center;}
+  a.card .text h2{font-size:17px;margin:0 0 3px;font-weight:700;}
+  a.card .text p{font-size:13px;color:var(--muted);margin:0;}
+  a.card.primary{background:var(--accent);border-color:var(--accent);}
+  a.card.primary .icon{background:rgba(255,255,255,.18);}
+  a.card.primary .text h2{color:var(--accent-ink);}
+  a.card.primary .text p{color:rgba(255,255,255,.85);}
+  footer{text-align:center;color:var(--muted);font-size:11.5px;padding:20px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>EliteSkyline</h1>
+  <div class="sub">Job Log</div>
+</header>
+
+<main>
+  <a class="card primary" href="/log">
+    <div class="icon">🚗</div>
+    <div class="text">
+      <h2>Log New Trip</h2>
+      <p>Quick entry for drivers on the road</p>
+    </div>
+  </a>
+
+  <a class="card" href="/update">
+    <div class="icon">✏️</div>
+    <div class="text">
+      <h2>Update Trip</h2>
+      <p>Find and edit a trip you've already logged</p>
+    </div>
+  </a>
+
+  <a class="card" href="/dashboard">
+    <div class="icon">📊</div>
+    <div class="text">
+      <h2>View Dashboard</h2>
+      <p>Full job log, invoices, drivers &amp; reports</p>
+    </div>
+  </a>
+</main>
+
+<footer>EliteSkyline Limo</footer>
+
+</body>
+</html>

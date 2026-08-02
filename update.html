@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Update Trip — EliteSkyline</title>
+<style>
+  :root{ --bg:#f5f6f8; --panel:#ffffff; --ink:#1c2230; --muted:#697086; --line:#e3e6ec; --accent:#2f6fed; --accent-ink:#ffffff; --green:#1a9c5a; --red:#d0453a; --radius:12px; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);overflow-x:hidden;}
+  input[type=date]{width:100%;max-width:100%;min-width:0;box-sizing:border-box;-webkit-min-logical-width:0;}
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:16px;text-align:center;position:sticky;top:0;z-index:5;}
+  header h1{font-size:18px;margin:0;font-weight:700;}
+  header .sub{font-size:12.5px;color:var(--muted);margin-top:2px;}
+  header a.back{position:absolute;left:16px;top:18px;color:var(--accent);text-decoration:none;font-size:14px;font-weight:600;}
+  main{padding:16px;max-width:520px;margin:0 auto;padding-bottom:40px;}
+  .field{margin-bottom:16px;min-width:0;}
+  label{display:block;font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.02em;margin-bottom:6px;}
+  select,input,textarea{width:100%;max-width:100%;box-sizing:border-box;font-family:inherit;font-size:17px;padding:14px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);}
+  select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent);}
+  textarea{resize:vertical;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;min-width:0;}
+  .row2>.field{min-width:0;}
+  .timeBox{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;background:#fff;overflow:hidden;}
+  .timeBox select{border:none;flex:1;min-width:0;text-align:center;padding:14px 4px;}
+  .timeBox select:focus{outline:none;}
+  .timeBox .colon{font-size:17px;font-weight:700;color:var(--muted);padding:0 2px;}
+  .btn{width:100%;background:var(--accent);color:var(--accent-ink);border:none;padding:17px;border-radius:10px;font-size:17px;font-weight:700;cursor:pointer;margin-top:8px;}
+  .btn.secondary{background:#eef1f6;color:var(--ink);}
+  .btn:active{filter:brightness(0.92);}
+  .btn:disabled{opacity:0.6;}
+  .msg{display:none;padding:14px 16px;border-radius:10px;font-size:14px;margin-bottom:16px;font-weight:600;}
+  .msg.show{display:block;}
+  .msg.success{background:#e4f7ec;color:var(--green);}
+  .msg.error{background:#fdecea;color:var(--red);}
+  .tripCard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px;cursor:pointer;}
+  .tripCard:active{filter:brightness(0.97);}
+  .tripCard .top{display:flex;justify-content:space-between;font-weight:700;font-size:15px;}
+  .tripCard .sub{font-size:12.5px;color:var(--muted);margin-top:4px;white-space:pre-line;}
+  .empty{text-align:center;color:var(--muted);padding:30px 0;font-size:14px;}
+  #listView, #editView{display:none;}
+  #listView.active, #editView.active{display:block;}
+  footer{text-align:center;color:var(--muted);font-size:11.5px;padding:20px;}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="back" href="/">← Home</a>
+  <h1>Update Trip</h1>
+  <div class="sub">Find and edit a trip you've logged</div>
+</header>
+
+<main>
+  <div class="msg" id="msg"></div>
+
+  <!-- SEARCH / LIST VIEW -->
+  <div id="listView" class="active">
+    <div class="field">
+      <label>Date</label>
+      <input type="date" id="s_date">
+    </div>
+    <div class="field">
+      <label>Host Name</label>
+      <select id="s_host"><option value="">— select host —</option></select>
+    </div>
+    <button class="btn" id="findBtn">Find Trips</button>
+
+    <div id="results" style="margin-top:20px;"></div>
+  </div>
+
+  <!-- EDIT VIEW -->
+  <div id="editView">
+    <button class="btn secondary" id="backToListBtn">← Back to list</button>
+
+    <div class="field" style="margin-top:16px;">
+      <label>Driver</label>
+      <select id="f_driver"></select>
+    </div>
+
+    <div class="field">
+      <label>Date</label>
+      <input type="date" id="f_date">
+    </div>
+
+    <div class="field">
+      <label>Job Type</label>
+      <select id="f_jobType"></select>
+    </div>
+
+    <div class="field" id="vehicleFieldWrap" style="display:none;">
+      <label>Vehicle Type</label>
+      <select id="f_vehicle"></select>
+    </div>
+
+    <div class="field">
+      <label>Requestor / Host Name</label>
+      <select id="f_host"><option value="">— select or leave blank —</option></select>
+    </div>
+
+    <div class="field">
+      <label>PAX</label>
+      <select id="f_pax"><option value="">— select —</option></select>
+    </div>
+
+    <div class="field">
+      <label>Itinerary</label>
+      <textarea id="f_itinerary" rows="3"></textarea>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Start Time</label>
+        <div class="timeBox">
+          <select id="f_start_h"></select>
+          <span class="colon">:</span>
+          <select id="f_start_m"></select>
+        </div>
+      </div>
+      <div class="field">
+        <label>End Time</label>
+        <div class="timeBox">
+          <select id="f_end_h"></select>
+          <span class="colon">:</span>
+          <select id="f_end_m"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Qty</label>
+        <input type="number" id="f_qty" step="any">
+        <div class="hint" id="qtyHint" style="display:none;font-size:12px;color:var(--muted);margin-top:5px;">Auto-set from Start/End time (hourly jobs)</div>
+      </div>
+      <div class="field">
+        <label>Unit Cost (S$)</label>
+        <input type="number" id="f_unitCost" step="any">
+        <div class="hint" id="unitCostHint" style="display:none;font-size:12px;color:var(--muted);margin-top:5px;">Auto-filled from rate card</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Remarks</label>
+      <input type="text" id="f_remarks">
+    </div>
+
+    <button class="btn" id="saveBtn">Save Changes</button>
+  </div>
+</main>
+
+<footer>Changes are saved directly to the job log.</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ctdtmwoztughpagavrsp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZHRtd296dHVnaHBhZ2F2cnNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1MzE3MDcsImV4cCI6MjEwMTEwNzcwN30.Rktv2pV1gE9LUi3Hr69C3YpaWBLvzwwI1jksl-7LwiY';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const RATE_MAP = {
+  'ADDITIONAL STOP (LOCAL)': { flat: 30 },
+  'ADDITIONAL STOP (MALAYSIA)': { flat: 30 },
+  'ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)': { flat: 30 },
+  'ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)': { flat: 15 },
+  'ARRIVAL (MEET & GREET)': { byVehicle: { 'MINI VAN':90, 'MPV/ALPHARD':90, 'SALOON':70 } },
+  'CANCELLATION (100%)': { flat: 140 },
+  'CANCELLATION (50%)': { flat: 70 },
+  'DEPARTURE': { byVehicle: { 'MINI VAN':80, 'MPV/ALPHARD':80, 'SALOON':60 } },
+  'HOURLY (LOCAL)': { byVehicle: { 'LARGE BUS':100, 'MINI BUS':90, 'MINI VAN':70, 'MPV/ALPHARD':70, 'SALOON':60 } },
+  'HOURLY (MALAYSIA)': { byVehicle: { 'MINI VAN':80, 'MPV/ALPHARD':90, 'SALOON':70 } },
+  'MIDNIGHT SURCHARGE (LOCAL)': { flat: 15 },
+  'MIDNIGHT SURCHARGE (MALAYSIA)': { flat: 20 },
+  'TOUR GUIDE (MIN 2)': { flat: 50 },
+  'TRANSFER (CROSS BORDER)(MINI VAN)': { flat: 160 },
+  'TRANSFER (CROSS BORDER)(MPV)': { flat: 170 },
+  'TRANSFER (CROSS BORDER)(SALOON)': { flat: 150 },
+  'TRANSFER (LOCAL)': { byVehicle: { 'LARGE BUS':160, 'MINI BUS':130, 'MINI VAN':70, 'MPV/ALPHARD':70, 'SALOON':55 } },
+  'TRANSFER (TUAS)': { byVehicle: { 'LARGE BUS':185, 'MINI BUS':150, 'MINI VAN':90, 'MPV/ALPHARD':90, 'SALOON':80 } },
+  'WAITING CHARGE (15 MINS/BLOCK)': { flat: 20 },
+  'WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)': { flat: 25 },
+};
+function getRateMapping(jobType){
+  return RATE_MAP[(jobType||'').trim()] || null;
+}
+function setUnitCostHint(show){
+  document.getElementById('unitCostHint').style.display = show ? '' : 'none';
+}
+function refreshVehicleField(jobType, selectedVehicle){
+  const wrap = document.getElementById('vehicleFieldWrap');
+  const sel = document.getElementById('f_vehicle');
+  const map = getRateMapping(jobType);
+  if(map && map.byVehicle){
+    fillSelect(sel, Object.keys(map.byVehicle), '— select vehicle —');
+    if(selectedVehicle) sel.value = selectedVehicle;
+    wrap.style.display = '';
+  } else {
+    sel.innerHTML = '';
+    wrap.style.display = 'none';
+  }
+}
+function applyRateToUnitCost(){
+  const jobType = document.getElementById('f_jobType').value;
+  const map = getRateMapping(jobType);
+  if(!map){ setUnitCostHint(false); return; }
+  if(map.flat != null){
+    document.getElementById('f_unitCost').value = map.flat;
+    setUnitCostHint(true);
+  } else if(map.byVehicle){
+    const vehicle = document.getElementById('f_vehicle').value;
+    if(vehicle && map.byVehicle[vehicle] != null){
+      document.getElementById('f_unitCost').value = map.byVehicle[vehicle];
+      setUnitCostHint(true);
+    } else {
+      setUnitCostHint(false);
+    }
+  }
+}
+const JOB_TYPES = ['ADDITIONAL CHARGE','ADDITIONAL STOP (LOCAL)','ADDITIONAL STOP (MALAYSIA)','ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)','ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)','ARRIVAL (DRIVE WAY PICK UP)','ARRIVAL (MEET & GREET)','CANCELLATION (100%)','CANCELLATION (25%)','CANCELLATION (50%)','DEPARTURE','DISPOSAL','HOURLY (LOCAL)','HOURLY (MALAYSIA)','MIDNIGHT SURCHARGE (LOCAL)','MIDNIGHT SURCHARGE (MALAYSIA)','MISCELLANEOUS','TOUR GUIDE (MIN 2)','TRANSFER (CROSS BORDER)(MINI VAN)','TRANSFER (CROSS BORDER)(MPV)','TRANSFER (CROSS BORDER)(SALOON)','TRANSFER (LOCAL)','TRANSFER (TUAS)','WAITING CHARGE (15 MINS/BLOCK)','WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)'];
+
+function fillSelect(sel, values, placeholder){
+  sel.innerHTML = `<option value="">${placeholder}</option>` + values.map(v=>`<option value="${String(v).replace(/"/g,'&quot;')}">${v}</option>`).join('');
+}
+function loadPax(sel){
+  const opts = []; for(let i=1;i<=20;i++) opts.push(`${i} PAX`);
+  fillSelect(sel, opts, '— select —');
+}
+// Separate Hour / Minute selects, combined into one HH:MM value — 24h, no AM/PM.
+function loadHourSelect(sel){
+  const opts = []; for(let h=0;h<24;h++) opts.push(String(h).padStart(2,'0'));
+  fillSelect(sel, opts, '--');
+}
+function loadMinuteSelect(sel){
+  const opts = []; for(let m=0;m<60;m++) opts.push(String(m).padStart(2,'0'));
+  fillSelect(sel, opts, '--');
+}
+function getTime(prefix){
+  const h = document.getElementById(prefix+'_h').value;
+  const m = document.getElementById(prefix+'_m').value;
+  return (h==='' || m==='') ? '' : h+':'+m;
+}
+function setTime(prefix, value){
+  const [h,m] = (value||'').split(':');
+  document.getElementById(prefix+'_h').value = h || '';
+  document.getElementById(prefix+'_m').value = m || '';
+}
+function extractRoute(text){
+  if(!text) return '';
+  return text.split('\n').filter(l=>!/^\s*(REQUESTOR|UID|COST CENTRE|DRIVER|PAX|TIME)\s*:/i.test(l)).join('\n').trim();
+}
+function extractPax(text){
+  const m = (text||'').match(/^\s*PAX\s*:\s*(.+)$/im);
+  return m ? m[1].trim() : null;
+}
+function extractUid(text){
+  const m = (text||'').match(/^\s*UID\s*:\s*(.*)$/im);
+  return m ? m[1].trim() : '';
+}
+function extractCostCentre(text){
+  const m = (text||'').match(/^\s*COST CENTRE\s*:\s*(.*)$/im);
+  return m ? m[1].trim() : '';
+}
+
+async function loadDrivers(){
+  const {data} = await sb.from('drivers').select('name').order('name');
+  const names = data ? [...new Set(data.map(d=>d.name))] : [];
+  fillSelect(document.getElementById('f_driver'), names, '— select driver —');
+}
+async function loadHosts(){
+  const {data} = await sb.from('clients').select('hostName').order('hostName');
+  const names = data ? [...new Set(data.map(c=>(c.hostName||'').trim()).filter(Boolean))].sort() : [];
+  fillSelect(document.getElementById('s_host'), names, '— select host —');
+  fillSelect(document.getElementById('f_host'), names, '— select or leave blank —');
+}
+
+loadDrivers();
+loadHosts();
+fillSelect(document.getElementById('f_jobType'), JOB_TYPES, '— select job type —');
+loadPax(document.getElementById('f_pax'));
+loadHourSelect(document.getElementById('f_start_h'));
+loadMinuteSelect(document.getElementById('f_start_m'));
+loadHourSelect(document.getElementById('f_end_h'));
+loadMinuteSelect(document.getElementById('f_end_m'));
+document.getElementById('s_date').valueAsDate = new Date();
+
+// Force free-text fields to uppercase, matching the ALL-CAPS convention used throughout the data.
+// Skips while an IME composition is active (e.g. typing Chinese via pinyin) so the candidate popup isn't disrupted.
+function wireUppercase(el){
+  el.addEventListener('input', (e)=>{
+    if(e.isComposing) return;
+    const start = el.selectionStart, end = el.selectionEnd;
+    el.value = el.value.toUpperCase();
+    if(start !== null) el.setSelectionRange(start, end);
+  });
+}
+['f_itinerary','f_remarks'].forEach(id=>wireUppercase(document.getElementById(id)));
+
+function showMsg(text, type){
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg show ' + type;
+}
+function clearMsg(){
+  document.getElementById('msg').className = 'msg';
+}
+
+function showList(){
+  document.getElementById('listView').classList.add('active');
+  document.getElementById('editView').classList.remove('active');
+}
+function showEdit(){
+  document.getElementById('listView').classList.remove('active');
+  document.getElementById('editView').classList.add('active');
+}
+
+let currentJobs = [];
+let editingId = null;
+
+document.getElementById('findBtn').addEventListener('click', async ()=>{
+  clearMsg();
+  const host = document.getElementById('s_host').value;
+  const date = document.getElementById('s_date').value;
+  if(!date && !host){ showMsg('Please select a date or a host.', 'error'); return; }
+
+  const btn = document.getElementById('findBtn');
+  btn.disabled = true;
+  btn.textContent = 'Searching…';
+  let query = sb.from('jobs').select('*').order('id');
+  if(date) query = query.eq('date', date);
+  const {data, error} = await query;
+  btn.disabled = false;
+  btn.textContent = 'Find Trips';
+  if(error){ showMsg('Search failed: ' + error.message, 'error'); return; }
+  // Filter client-side by trimmed host name — the hostName column sometimes has trailing spaces.
+  currentJobs = host ? (data || []).filter(j => (j.hostName||'').trim() === host) : (data || []);
+  renderResults();
+});
+
+function renderResults(){
+  const el = document.getElementById('results');
+  if(currentJobs.length === 0){
+    el.innerHTML = '<div class="empty">No trips found.</div>';
+    return;
+  }
+  el.innerHTML = currentJobs.map(j=>`
+    <div class="tripCard" data-id="${j.id}">
+      <div class="top"><span>${j.jobType||'(no job type)'}</span><span>S$${(Number(j.cost)||0).toFixed(2)}</span></div>
+      <div class="sub">${j.driver||'(no driver)'}${j.startTime?` · ${j.startTime}${j.endTime?'–'+j.endTime:''}`:''}</div>
+    </div>
+  `).join('');
+  el.querySelectorAll('.tripCard').forEach(card=>{
+    card.addEventListener('click', ()=>openEdit(Number(card.dataset.id)));
+  });
+}
+
+function openEdit(id){
+  const job = currentJobs.find(j=>j.id===id);
+  if(!job) return;
+  editingId = id;
+  clearMsg();
+  document.getElementById('f_driver').value = job.driver || '';
+  document.getElementById('f_date').value = job.date || '';
+  document.getElementById('f_jobType').value = job.jobType || '';
+  refreshVehicleField(job.jobType, job.vehicle);
+  setUnitCostHint(!!getRateMapping(job.jobType));
+  document.getElementById('f_host').value = job.hostName ? job.hostName.trim() : '';
+  document.getElementById('f_pax').value = extractPax(job.details) || '';
+  document.getElementById('f_itinerary').value = extractRoute(job.details);
+  setTime('f_start', job.startTime);
+  setTime('f_end', job.endTime);
+  document.getElementById('f_qty').value = job.qty ?? '';
+  document.getElementById('f_unitCost').value = job.unitCost ?? '';
+  document.getElementById('f_remarks').value = job.remarks || '';
+  document.getElementById('qtyHint').style.display = isHourlyJobType(job.jobType) ? '' : 'none';
+  showEdit();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+document.getElementById('backToListBtn').addEventListener('click', ()=>{
+  editingId = null;
+  clearMsg();
+  showList();
+});
+
+document.getElementById('f_jobType').addEventListener('change', ()=>{
+  refreshVehicleField(document.getElementById('f_jobType').value);
+  applyRateToUnitCost();
+  updateQtyFromTime();
+});
+document.getElementById('f_vehicle').addEventListener('change', applyRateToUnitCost);
+
+// For HOURLY job types, derive Qty from Start/End time (billed in whole-hour blocks, rounded up)
+function isHourlyJobType(jt){
+  return !!jt && jt.toUpperCase().includes('HOURLY');
+}
+function updateQtyFromTime(){
+  const jt = document.getElementById('f_jobType').value;
+  document.getElementById('qtyHint').style.display = isHourlyJobType(jt) ? '' : 'none';
+  if(!isHourlyJobType(jt)) return;
+  const start = getTime('f_start');
+  const end = getTime('f_end');
+  if(!start || !end) return;
+  const [sh,sm] = start.split(':').map(Number);
+  const [eh,em] = end.split(':').map(Number);
+  let diff = (eh*60+em) - (sh*60+sm);
+  if(diff <= 0) diff += 24*60; // job runs past midnight
+  const hours = diff/60;
+  const qty = Math.max(1, Math.ceil(hours - 1e-9)); // round up to next full hour block
+  document.getElementById('f_qty').value = qty;
+}
+['f_start_h','f_start_m','f_end_h','f_end_m'].forEach(id=>document.getElementById(id).addEventListener('change', updateQtyFromTime));
+
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+  if(!editingId) return;
+  const original = currentJobs.find(j=>j.id===editingId) || {};
+  const driver = document.getElementById('f_driver').value;
+  const date = document.getElementById('f_date').value;
+  const jobType = document.getElementById('f_jobType').value;
+  const hostName = document.getElementById('f_host').value;
+  const pax = document.getElementById('f_pax').value;
+  const itinerary = document.getElementById('f_itinerary').value;
+  const startTime = getTime('f_start');
+  const endTime = getTime('f_end');
+  const qty = Number(document.getElementById('f_qty').value)||0;
+  const unitCost = Number(document.getElementById('f_unitCost').value)||0;
+  const remarks = document.getElementById('f_remarks').value;
+  const vehicle = document.getElementById('f_vehicle').value;
+
+  if(!driver){ showMsg('Please select a driver.', 'error'); return; }
+  if(!date){ showMsg('Please set a date.', 'error'); return; }
+
+  const lines = [];
+  lines.push(`REQUESTOR: ${hostName||''}`);
+  lines.push(`UID: ${extractUid(original.details)}`);
+  lines.push(`COST CENTRE: ${extractCostCentre(original.details)}`);
+  lines.push(`PAX: ${pax||''}`);
+  if(itinerary) lines.push(itinerary);
+  lines.push(`DRIVER: ${driver}`);
+  if(startTime){
+    const s = startTime.replace(':',''), e = endTime ? endTime.replace(':','') : '';
+    lines.push(`TIME: ${s}${e?` - ${e}`:''}`);
+  } else {
+    lines.push('TIME: ');
+  }
+
+  const update = {
+    driver, date, jobType, hostName, vehicle: vehicle||null,
+    details: lines.join('\n'),
+    startTime: startTime||null, endTime: endTime||null,
+    qty, unitCost, cost: qty*unitCost,
+    remarks,
+  };
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  const {error} = await sb.from('jobs').update(update).eq('id', editingId);
+  btn.disabled = false;
+  btn.textContent = 'Save Changes';
+
+  if(error){ showMsg('Save failed: ' + error.message, 'error'); return; }
+  showMsg('Trip updated!', 'success');
+  editingId = null;
+  setTimeout(()=>{
+    showList();
+    document.getElementById('findBtn').click();
+  }, 700);
+});
+</script>
+</body>
+</html>

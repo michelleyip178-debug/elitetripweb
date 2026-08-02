@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Log a Trip — EliteSkyline</title>
+<style>
+  :root{ --bg:#f5f6f8; --panel:#ffffff; --ink:#1c2230; --muted:#697086; --line:#e3e6ec; --accent:#2f6fed; --accent-ink:#ffffff; --green:#1a9c5a; --red:#d0453a; --radius:12px; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);overflow-x:hidden;}
+  input[type=date]{width:100%;max-width:100%;min-width:0;box-sizing:border-box;-webkit-min-logical-width:0;}
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:16px;text-align:center;position:sticky;top:0;position:relative;}
+  header h1{font-size:18px;margin:0;font-weight:700;}
+  header .sub{font-size:12.5px;color:var(--muted);margin-top:2px;}
+  header a.back{position:absolute;left:16px;top:18px;color:var(--accent);text-decoration:none;font-size:14px;font-weight:600;}
+  main{padding:16px;max-width:520px;margin:0 auto;padding-bottom:40px;}
+  .field{margin-bottom:16px;min-width:0;}
+  label{display:block;font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.02em;margin-bottom:6px;}
+  select,input,textarea{width:100%;max-width:100%;box-sizing:border-box;font-family:inherit;font-size:17px;padding:14px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);}
+  select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent);}
+  textarea{resize:vertical;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;min-width:0;}
+  .row2>.field{min-width:0;}
+  .timeBox{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;background:#fff;overflow:hidden;}
+  .timeBox select{border:none;flex:1;min-width:0;text-align:center;padding:14px 4px;}
+  .timeBox select:focus{outline:none;}
+  .timeBox .colon{font-size:17px;font-weight:700;color:var(--muted);padding:0 2px;}
+  .hint{font-size:12px;color:var(--muted);margin-top:5px;}
+  .btn{width:100%;background:var(--accent);color:var(--accent-ink);border:none;padding:17px;border-radius:10px;font-size:17px;font-weight:700;cursor:pointer;margin-top:8px;}
+  .btn:active{filter:brightness(0.92);}
+  .btn:disabled{opacity:0.6;}
+  .msg{display:none;padding:14px 16px;border-radius:10px;font-size:14px;margin-bottom:16px;font-weight:600;}
+  .msg.show{display:block;}
+  .msg.success{background:#e4f7ec;color:var(--green);}
+  .msg.error{background:#fdecea;color:var(--red);}
+  .costRow{display:flex;justify-content:space-between;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:16px;}
+  .costRow .amount{font-size:22px;font-weight:700;}
+  footer{text-align:center;color:var(--muted);font-size:11.5px;padding:20px;}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="back" href="/">← Home</a>
+  <h1>EliteSkyline — Log a Trip</h1>
+  <div class="sub">Quick entry for drivers</div>
+</header>
+
+<main>
+  <div class="msg" id="msg"></div>
+
+  <div class="field">
+    <label>Date</label>
+    <input type="date" id="f_date">
+  </div>
+
+  <div class="field">
+    <label>Job Type</label>
+    <select id="f_jobType"><option value="">— select job type —</option></select>
+  </div>
+
+  <div class="field" id="vehicleFieldWrap" style="display:none;">
+    <label>Vehicle Type</label>
+    <select id="f_vehicle"></select>
+  </div>
+
+  <div class="field">
+    <label>Driver</label>
+    <select id="f_driver"><option value="">— select driver —</option></select>
+  </div>
+
+  <div class="field">
+    <label>Requestor / Host Name</label>
+    <select id="f_host"><option value="">— select or leave blank —</option></select>
+  </div>
+
+  <div class="field">
+    <label>PAX</label>
+    <select id="f_pax"><option value="">— select —</option></select>
+  </div>
+
+  <div class="field">
+    <label>Itinerary</label>
+    <textarea id="f_itinerary" rows="3" placeholder="e.g. PLQ 1 - Fairmont Singapore - PLQ 1"></textarea>
+  </div>
+
+  <div class="row2">
+    <div class="field">
+      <label>Start Time</label>
+      <div class="timeBox">
+        <select id="f_start_h"></select>
+        <span class="colon">:</span>
+        <select id="f_start_m"></select>
+      </div>
+    </div>
+    <div class="field">
+      <label>End Time</label>
+      <div class="timeBox">
+        <select id="f_end_h"></select>
+        <span class="colon">:</span>
+        <select id="f_end_m"></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="row2">
+    <div class="field">
+      <label>Qty</label>
+      <input type="number" id="f_qty" value="1" step="any">
+      <div class="hint" id="qtyHint" style="display:none;">Auto-set from Start/End time (hourly jobs)</div>
+    </div>
+    <div class="field">
+      <label>Unit Cost (S$)</label>
+      <input type="number" id="f_unitCost" step="any">
+      <div class="hint" id="unitCostHint" style="display:none;">Auto-filled from rate card</div>
+    </div>
+  </div>
+
+  <div class="costRow">
+    <span class="hint" style="margin:0;">Total Cost</span>
+    <span class="amount" id="totalDisplay">S$0.00</span>
+  </div>
+
+  <div class="field">
+    <label>Remarks (optional)</label>
+    <input type="text" id="f_remarks">
+  </div>
+
+  <button class="btn" id="submitBtn">Submit Trip</button>
+</main>
+
+<footer>Submitted trips are reviewed and finalized by the office.</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ctdtmwoztughpagavrsp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZHRtd296dHVnaHBhZ2F2cnNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1MzE3MDcsImV4cCI6MjEwMTEwNzcwN30.Rktv2pV1gE9LUi3Hr69C3YpaWBLvzwwI1jksl-7LwiY';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Rate card: Job Type -> flat unit cost, or unit cost by vehicle type
+const RATE_MAP = {
+  'ADDITIONAL STOP (LOCAL)': { flat: 30 },
+  'ADDITIONAL STOP (MALAYSIA)': { flat: 30 },
+  'ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)': { flat: 30 },
+  'ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)': { flat: 15 },
+  'ARRIVAL (MEET & GREET)': { byVehicle: { 'MINI VAN':90, 'MPV/ALPHARD':90, 'SALOON':70 } },
+  'CANCELLATION (100%)': { flat: 140 },
+  'CANCELLATION (50%)': { flat: 70 },
+  'DEPARTURE': { byVehicle: { 'MINI VAN':80, 'MPV/ALPHARD':80, 'SALOON':60 } },
+  'HOURLY (LOCAL)': { byVehicle: { 'LARGE BUS':100, 'MINI BUS':90, 'MINI VAN':70, 'MPV/ALPHARD':70, 'SALOON':60 } },
+  'HOURLY (MALAYSIA)': { byVehicle: { 'MINI VAN':80, 'MPV/ALPHARD':90, 'SALOON':70 } },
+  'MIDNIGHT SURCHARGE (LOCAL)': { flat: 15 },
+  'MIDNIGHT SURCHARGE (MALAYSIA)': { flat: 20 },
+  'TOUR GUIDE (MIN 2)': { flat: 50 },
+  'TRANSFER (CROSS BORDER)(MINI VAN)': { flat: 160 },
+  'TRANSFER (CROSS BORDER)(MPV)': { flat: 170 },
+  'TRANSFER (CROSS BORDER)(SALOON)': { flat: 150 },
+  'TRANSFER (LOCAL)': { byVehicle: { 'LARGE BUS':160, 'MINI BUS':130, 'MINI VAN':70, 'MPV/ALPHARD':70, 'SALOON':55 } },
+  'TRANSFER (TUAS)': { byVehicle: { 'LARGE BUS':185, 'MINI BUS':150, 'MINI VAN':90, 'MPV/ALPHARD':90, 'SALOON':80 } },
+  'WAITING CHARGE (15 MINS/BLOCK)': { flat: 20 },
+  'WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)': { flat: 25 },
+  // ADDITIONAL CHARGE, ARRIVAL (DRIVE WAY PICK UP), CANCELLATION (25%), DISPOSAL, MISCELLANEOUS:
+  // no fixed rate on file — unit cost stays manual for these.
+};
+function getRateMapping(jobType){
+  return RATE_MAP[(jobType||'').trim()] || null;
+}
+function setUnitCostHint(show){
+  document.getElementById('unitCostHint').style.display = show ? '' : 'none';
+}
+function refreshVehicleField(jobType){
+  const wrap = document.getElementById('vehicleFieldWrap');
+  const sel = document.getElementById('f_vehicle');
+  const map = getRateMapping(jobType);
+  if(map && map.byVehicle){
+    fillSelect(sel, Object.keys(map.byVehicle), '— select vehicle —');
+    wrap.style.display = '';
+  } else {
+    sel.innerHTML = '';
+    wrap.style.display = 'none';
+  }
+}
+function applyRateToUnitCost(){
+  const jobType = document.getElementById('f_jobType').value;
+  const map = getRateMapping(jobType);
+  if(!map){ setUnitCostHint(false); return; }
+  if(map.flat != null){
+    document.getElementById('f_unitCost').value = map.flat;
+    setUnitCostHint(true);
+    updateTotal();
+  } else if(map.byVehicle){
+    const vehicle = document.getElementById('f_vehicle').value;
+    if(vehicle && map.byVehicle[vehicle] != null){
+      document.getElementById('f_unitCost').value = map.byVehicle[vehicle];
+      setUnitCostHint(true);
+      updateTotal();
+    } else {
+      setUnitCostHint(false);
+    }
+  }
+}
+
+const JOB_TYPES = ['ADDITIONAL CHARGE','ADDITIONAL STOP (LOCAL)','ADDITIONAL STOP (MALAYSIA)','ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)','ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)','ARRIVAL (DRIVE WAY PICK UP)','ARRIVAL (MEET & GREET)','CANCELLATION (100%)','CANCELLATION (25%)','CANCELLATION (50%)','DEPARTURE','DISPOSAL','HOURLY (LOCAL)','HOURLY (MALAYSIA)','MIDNIGHT SURCHARGE (LOCAL)','MIDNIGHT SURCHARGE (MALAYSIA)','MISCELLANEOUS','TOUR GUIDE (MIN 2)','TRANSFER (CROSS BORDER)(MINI VAN)','TRANSFER (CROSS BORDER)(MPV)','TRANSFER (CROSS BORDER)(SALOON)','TRANSFER (LOCAL)','TRANSFER (TUAS)','WAITING CHARGE (15 MINS/BLOCK)','WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)'];
+
+function fillSelect(sel, values, placeholder){
+  sel.innerHTML = `<option value="">${placeholder}</option>` + values.map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('');
+}
+
+async function loadDrivers(){
+  const sel = document.getElementById('f_driver');
+  const {data, error} = await sb.from('drivers').select('name').order('name');
+  if(error || !data){
+    sel.innerHTML = '<option value="">Could not load drivers</option>';
+    return;
+  }
+  fillSelect(sel, [...new Set(data.map(d=>d.name))], '— select driver —');
+}
+
+async function loadHosts(){
+  const sel = document.getElementById('f_host');
+  const {data, error} = await sb.from('clients').select('hostName').order('hostName');
+  if(error || !data){
+    sel.innerHTML = '<option value="">— select or leave blank —</option>';
+    return;
+  }
+  fillSelect(sel, [...new Set(data.map(c=>(c.hostName||'').trim()).filter(Boolean))].sort(), '— select or leave blank —');
+}
+
+function loadPax(){
+  const sel = document.getElementById('f_pax');
+  const opts = [];
+  for(let i=1;i<=20;i++) opts.push(`${i} PAX`);
+  fillSelect(sel, opts, '— select —');
+}
+
+// Separate Hour / Minute selects, combined into one HH:MM value — 24h, no AM/PM.
+function loadHourSelect(sel){
+  const opts = []; for(let h=0;h<24;h++) opts.push(String(h).padStart(2,'0'));
+  fillSelect(sel, opts, '--');
+}
+function loadMinuteSelect(sel){
+  const opts = []; for(let m=0;m<60;m++) opts.push(String(m).padStart(2,'0'));
+  fillSelect(sel, opts, '--');
+}
+function getTime(prefix){
+  const h = document.getElementById(prefix+'_h').value;
+  const m = document.getElementById(prefix+'_m').value;
+  return (h==='' || m==='') ? '' : h+':'+m;
+}
+function setTime(prefix, value){
+  const [h,m] = (value||'').split(':');
+  document.getElementById(prefix+'_h').value = h || '';
+  document.getElementById(prefix+'_m').value = m || '';
+}
+
+fillSelect(document.getElementById('f_jobType'), JOB_TYPES, '— select job type —');
+loadDrivers();
+loadHosts();
+loadPax();
+loadHourSelect(document.getElementById('f_start_h'));
+loadMinuteSelect(document.getElementById('f_start_m'));
+loadHourSelect(document.getElementById('f_end_h'));
+loadMinuteSelect(document.getElementById('f_end_m'));
+
+document.getElementById('f_date').valueAsDate = new Date();
+
+// Force free-text fields to uppercase, matching the ALL-CAPS convention used throughout the data.
+// Skips while an IME composition is active (e.g. typing Chinese via pinyin) so the candidate popup isn't disrupted.
+function wireUppercase(el){
+  el.addEventListener('input', (e)=>{
+    if(e.isComposing) return;
+    const start = el.selectionStart, end = el.selectionEnd;
+    el.value = el.value.toUpperCase();
+    if(start !== null) el.setSelectionRange(start, end);
+  });
+}
+['f_itinerary','f_remarks'].forEach(id=>wireUppercase(document.getElementById(id)));
+
+document.getElementById('f_jobType').addEventListener('change', ()=>{
+  refreshVehicleField(document.getElementById('f_jobType').value);
+  applyRateToUnitCost();
+  updateQtyFromTime();
+});
+document.getElementById('f_vehicle').addEventListener('change', applyRateToUnitCost);
+
+// For HOURLY job types, derive Qty from Start/End time (billed in whole-hour blocks, rounded up)
+function isHourlyJobType(jt){
+  return !!jt && jt.toUpperCase().includes('HOURLY');
+}
+function updateQtyFromTime(){
+  const jt = document.getElementById('f_jobType').value;
+  document.getElementById('qtyHint').style.display = isHourlyJobType(jt) ? '' : 'none';
+  if(!isHourlyJobType(jt)) return;
+  const start = getTime('f_start');
+  const end = getTime('f_end');
+  if(!start || !end) return;
+  const [sh,sm] = start.split(':').map(Number);
+  const [eh,em] = end.split(':').map(Number);
+  let diff = (eh*60+em) - (sh*60+sm);
+  if(diff <= 0) diff += 24*60; // job runs past midnight
+  const hours = diff/60;
+  const qty = Math.max(1, Math.ceil(hours - 1e-9)); // round up to next full hour block
+  document.getElementById('f_qty').value = qty;
+  updateTotal();
+}
+['f_start_h','f_start_m','f_end_h','f_end_m'].forEach(id=>document.getElementById(id).addEventListener('change', updateQtyFromTime));
+
+function updateTotal(){
+  const qty = Number(document.getElementById('f_qty').value)||0;
+  const unitCost = Number(document.getElementById('f_unitCost').value)||0;
+  document.getElementById('totalDisplay').textContent = 'S$' + (qty*unitCost).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+['f_qty','f_unitCost'].forEach(id=>document.getElementById(id).addEventListener('input', updateTotal));
+
+function showMsg(text, type){
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg show ' + type;
+}
+
+document.getElementById('submitBtn').addEventListener('click', async ()=>{
+  const driver = document.getElementById('f_driver').value;
+  const date = document.getElementById('f_date').value;
+  const jobType = document.getElementById('f_jobType').value;
+  const hostName = document.getElementById('f_host').value;
+  const pax = document.getElementById('f_pax').value;
+  const itinerary = document.getElementById('f_itinerary').value;
+  const startTime = getTime('f_start');
+  const endTime = getTime('f_end');
+  const qty = Number(document.getElementById('f_qty').value)||0;
+  const unitCost = Number(document.getElementById('f_unitCost').value)||0;
+  const remarks = document.getElementById('f_remarks').value;
+  const vehicle = document.getElementById('f_vehicle').value;
+
+  if(!driver){ showMsg('Please select your name.', 'error'); return; }
+  if(!date){ showMsg('Please set a date.', 'error'); return; }
+  if(!jobType){ showMsg('Please select a job type.', 'error'); return; }
+
+  const lines = [];
+  lines.push(`REQUESTOR: ${hostName||''}`);
+  lines.push(`UID: `);
+  lines.push(`COST CENTRE: `);
+  lines.push(`PAX: ${pax||''}`);
+  if(itinerary) lines.push(itinerary);
+  lines.push(`DRIVER: ${driver}`);
+  if(startTime){
+    const s = startTime.replace(':','');
+    const e = endTime ? endTime.replace(':','') : '';
+    lines.push(`TIME: ${s}${e?` - ${e}`:''}`);
+  } else {
+    lines.push('TIME: ');
+  }
+
+  const job = {
+    date, driver, jobType,
+    hostName, uid: '', costCentre: '', company: '',
+    details: lines.join('\n'),
+    startTime: startTime||null, endTime: endTime||null,
+    qty, unitCost, cost: qty*unitCost,
+    driverPayout: null, coyFund: null,
+    paymentStatus: 'Unpaid',
+    remarks,
+    invoice: null, vehicle: vehicle||null,
+  };
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  const {error} = await sb.from('jobs').insert(job);
+  btn.disabled = false;
+  btn.textContent = 'Submit Trip';
+
+  if(error){
+    showMsg('Failed to submit: ' + error.message, 'error');
+    return;
+  }
+  showMsg('Trip submitted! Thank you.', 'success');
+  ['f_host','f_pax','f_itinerary','f_start_h','f_start_m','f_end_h','f_end_m','f_remarks'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f_jobType').value = '';
+  document.getElementById('f_unitCost').value = '';
+  document.getElementById('f_qty').value = 1;
+  refreshVehicleField('');
+  setUnitCostHint(false);
+  document.getElementById('qtyHint').style.display = 'none';
+  updateTotal();
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+</script>
+</body>
+</html>

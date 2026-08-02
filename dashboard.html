@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EliteSkyline — Job Log</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <h1>EliteSkyline</h1>
+    <div class="sub">Sign in to access the Job Log</div>
+    <div class="login-error" id="loginError"></div>
+    <input type="email" id="loginEmail" placeholder="Email address">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button class="btn" id="loginBtn">Sign In</button>
+  </div>
+</div>
+
+<header>
+  <div>
+    <a href="/" style="font-size:12px;color:var(--accent);text-decoration:none;font-weight:600;">← Home</a>
+    <h1>EliteSkyline — Job Log</h1>
+    <div class="sub" id="headerSub">Loading…</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button class="btn secondary" id="exportBtn">Export CSV</button>
+    <button class="btn" id="addJobBtn">+ New Job</button>
+    <button id="logoutBtn">Sign Out</button>
+  </div>
+</header>
+
+<nav>
+  <button data-view="dashboard" class="active">Dashboard</button>
+  <button data-view="jobs">Job Log</button>
+  <button data-view="invoices">Invoices</button>
+  <button data-view="drivers">Drivers</button>
+  <button data-view="clients">Clients</button>
+  <button data-view="jobtypes">Job Types &amp; Rates</button>
+</nav>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <div class="view active" id="view-dashboard">
+    <div class="cards" id="dashCards"></div>
+    <div class="panel">
+      <h2>Monthly Totals (2026)</h2>
+      <table id="monthlyTable">
+        <thead><tr><th>Month</th><th class="num">Jobs</th><th class="num">Total Sales</th><th class="num">Driver Payout</th><th class="num">Company Fund</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <h2>Payment Status</h2>
+      <table id="paymentTable">
+        <thead><tr><th>Status</th><th class="num">Jobs</th><th class="num">Total Sales</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- JOBS -->
+  <div class="view" id="view-jobs">
+    <div class="toolbar">
+      <select id="fMonth"><option value="">All Months</option></select>
+      <select id="fDriver"><option value="">All Drivers</option></select>
+      <select id="fStatus"><option value="">All Payment Status</option><option>Paid</option><option>Pending</option><option>Unpaid</option></select>
+      <input type="search" id="fSearch" placeholder="Search host, company, invoice, route…">
+      <div class="spacer"></div>
+      <span class="small muted" id="jobsCount"></span>
+    </div>
+    <div class="panel" style="overflow:auto;max-height:70vh;">
+      <table id="jobsTable">
+        <thead><tr>
+          <th>Date</th><th>Invoice #</th><th>Driver</th><th>Job Type</th><th>Host / Company</th><th>Trip Details</th>
+          <th class="num">Cost</th><th class="num">Payout</th><th class="num">Coy Fund</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="jobsPagination"></div>
+  </div>
+
+  <!-- INVOICES -->
+  <div class="view" id="view-invoices">
+    <div class="toolbar">
+      <select id="fInvYear"><option value="">All Years</option></select>
+      <select id="fInvMonth"><option value="">All Months</option></select>
+      <select id="fInvDate"><option value="">All Dates</option></select>
+      <input type="search" id="fInvSearch" placeholder="Search invoice #, host, company…">
+      <div class="spacer"></div>
+      <span class="small muted" id="invCount"></span>
+      <button class="btn secondary" id="autoAssignBtn">Auto-Assign Invoice #s</button>
+      <button class="btn" id="exportInvoicesBtn">Export to QuickBooks (0)</button>
+    </div>
+    <div class="panel" style="overflow:auto;max-height:75vh;">
+      <table id="invoicesTable">
+        <thead><tr><th><input type="checkbox" id="invSelectAll"></th><th>Date(s)</th><th>Invoice #</th><th>Host / Company</th><th class="num">Jobs</th><th class="num">Total Sales</th><th>Payment Status</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="invoicesPagination"></div>
+
+    <div class="panel" id="invItemsPanel" style="overflow:auto;max-height:75vh;display:none;">
+      <h2 id="invItemsTitle">Line Items</h2>
+      <table id="invItemsTable">
+        <thead><tr><th>Date</th><th>Invoice #</th><th>Driver</th><th>Job Type</th><th>Host / Company</th><th>Trip Details</th><th class="num">Qty</th><th class="num">Unit Cost</th><th class="num">Cost</th><th>Status</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="pagination" id="invItemsPagination"></div>
+    </div>
+  </div>
+
+  <!-- DRIVERS -->
+  <div class="view" id="view-drivers">
+    <div class="toolbar">
+      <div class="spacer"></div>
+      <button class="btn" id="addDriverBtn">+ New Driver</button>
+    </div>
+    <div class="panel" style="overflow:auto;max-height:75vh;">
+      <table id="driversTable">
+        <thead><tr><th>Driver</th><th>Vehicle</th><th>Plate</th><th>Phone</th><th>Payout Rate</th><th class="num">Jobs (2026)</th><th class="num">Total Payout</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="driversPagination"></div>
+  </div>
+
+  <!-- CLIENTS -->
+  <div class="view" id="view-clients">
+    <div class="toolbar">
+      <input type="search" id="fClientSearch" placeholder="Search host, company, UID…">
+      <div class="spacer"></div>
+      <button class="btn" id="addClientBtn">+ New Client</button>
+    </div>
+    <div class="panel" style="overflow:auto;max-height:75vh;">
+      <table id="clientsTable">
+        <thead><tr><th>Host Name</th><th>UID</th><th>Cost Centre</th><th>Company</th><th>Code</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="clientsPagination"></div>
+  </div>
+
+  <!-- JOB TYPES -->
+  <div class="view" id="view-jobtypes">
+    <div class="panel" style="overflow:auto;max-height:75vh;">
+      <table id="ratesTable">
+        <thead><tr><th>Job Type</th><th class="num">Unit Price (S$)</th><th>Billing Unit</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="ratesPagination"></div>
+  </div>
+
+</main>
+
+<footer>Data stored in Supabase. Use Export CSV to back up.</footer>
+
+<!-- JOB MODAL -->
+<div class="modal-bg" id="jobModalBg">
+  <div class="modal">
+    <h3 id="jobModalTitle">New Job</h3>
+    <div class="form-grid">
+      <div><label>Date</label><input type="date" id="f_date"></div>
+      <div><label>Invoice #</label><input type="text" id="f_invoice" placeholder="e.g. MINV2026080001"></div>
+
+      <div><label>Driver</label><select id="f_driver"></select></div>
+      <div><label>Job Type</label><select id="f_jobType"></select></div>
+
+      <div id="vehicleFieldWrap" style="display:none;"><label>Vehicle Type</label><select id="f_vehicle"></select></div>
+
+      <div class="full"><label>Client (Host Name / Requestor)</label><select id="f_client"><option value="">— select or leave blank —</option></select></div>
+
+      <div><label>Company</label><input type="text" id="f_company"></div>
+      <div><label>UID</label><input type="text" id="f_uid"></div>
+      <div><label>Cost Centre</label><input type="text" id="f_costCentre"></div>
+      <div><label>PAX</label><input type="text" id="f_pax" placeholder="e.g. 3 PAX"></div>
+
+      <div class="full"><label>Itinerary</label><textarea id="f_details" rows="3" placeholder="e.g. PLQ 1 - Fairmont Singapore - PLQ 1"></textarea></div>
+
+      <div><label>Start Time</label><input type="text" id="f_start" placeholder="HH:MM" inputmode="numeric" maxlength="5"></div>
+      <div><label>End Time</label><input type="text" id="f_end" placeholder="HH:MM" inputmode="numeric" maxlength="5"></div>
+
+      <div><label>Qty</label><input type="number" id="f_qty" step="any" value="1"><div class="small muted" id="qtyHint" style="display:none;margin-top:3px;">Auto-set from Start/End time for hourly jobs (rounds up to the next full hour)</div></div>
+      <div><label>Unit Cost (S$)</label><input type="number" id="f_unitCost" step="any"><div class="small muted" id="unitCostHint" style="display:none;margin-top:3px;">Auto-filled from Job Type / Vehicle rate card</div></div>
+
+      <div><label>Total Cost (S$)</label><input type="number" id="f_cost" step="any" readonly style="background:#f5f6f8;"><div class="small muted" style="margin-top:3px;">Qty × Unit Cost</div></div>
+      <div><label>Driver Payout (S$)</label><input type="number" id="f_payout" step="any" readonly style="background:#f5f6f8;"><div class="small muted" style="margin-top:3px;">Total Cost − (Qty × S$10)</div></div>
+
+      <div><label>Company Fund (S$)</label><input type="number" id="f_coyFund" step="any" readonly style="background:#f5f6f8;"></div>
+      <div><label>Payment Status</label><select id="f_status"><option>Unpaid</option><option>Pending</option><option>Paid</option></select></div>
+
+      <div class="full"><label>Remarks</label><input type="text" id="f_remarks"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn danger" id="deleteJobBtn" style="display:none;margin-right:auto;">Delete</button>
+      <button class="btn secondary" id="cancelJobBtn">Cancel</button>
+      <button class="btn" id="saveJobBtn">Save Job</button>
+    </div>
+  </div>
+</div>
+
+<!-- DRIVER MODAL -->
+<div class="modal-bg" id="driverModalBg">
+  <div class="modal">
+    <h3 id="driverModalTitle">New Driver</h3>
+    <div class="form-grid">
+      <div class="full"><label>Name</label><input type="text" id="d_name"></div>
+      <div><label>Vehicle</label><input type="text" id="d_vehicle"></div>
+      <div><label>Plate</label><input type="text" id="d_plate"></div>
+      <div><label>Phone</label><input type="text" id="d_phone"></div>
+      <div><label>Payout Rate / Note</label><input type="text" id="d_rateNote"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn danger" id="deleteDriverBtn" style="display:none;margin-right:auto;">Delete</button>
+      <button class="btn secondary" id="cancelDriverBtn">Cancel</button>
+      <button class="btn" id="saveDriverBtn">Save Driver</button>
+    </div>
+  </div>
+</div>
+
+<!-- CLIENT MODAL -->
+<div class="modal-bg" id="clientModalBg">
+  <div class="modal">
+    <h3 id="clientModalTitle">New Client</h3>
+    <div class="form-grid">
+      <div class="full"><label>Host Name</label><input type="text" id="c_hostName"></div>
+      <div><label>UID</label><input type="text" id="c_uid"></div>
+      <div><label>Cost Centre</label><input type="text" id="c_costCentre"></div>
+      <div><label>Company</label><input type="text" id="c_company"></div>
+      <div><label>Code</label><input type="text" id="c_code"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn danger" id="deleteClientBtn" style="display:none;margin-right:auto;">Delete</button>
+      <button class="btn secondary" id="cancelClientBtn">Cancel</button>
+      <button class="btn" id="saveClientBtn">Save Client</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
