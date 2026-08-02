@@ -30,13 +30,13 @@
   .calendarPopover{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(20,24,34,.16);padding:12px;z-index:30;}
   .calHeader{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-weight:700;font-size:14px;}
   .calNav{background:none;border:none;font-size:20px;cursor:pointer;color:var(--accent);padding:2px 12px;line-height:1;}
-  .calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center;}
-  .calGrid .dow{color:var(--muted);font-weight:600;font-size:11px;padding:4px 0;}
-  .calGrid .day{padding:9px 0;border-radius:8px;cursor:pointer;font-size:14px;}
+  .calGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;text-align:center;}
+  .calGrid .dow{min-width:0;color:var(--muted);font-weight:600;font-size:11px;padding:4px 0;}
+  .calGrid .day{min-width:0;padding:9px 0;border-radius:8px;cursor:pointer;font-size:14px;}
   .calGrid .day:active{background:#eef1f6;}
   .calGrid .day.selected{background:var(--accent);color:#fff;font-weight:700;}
   .calGrid .day.today:not(.selected){border:1.5px solid var(--accent);}
-  .calGrid .empty{visibility:hidden;}
+  .calGrid .empty{min-width:0;visibility:hidden;}
   .hint{font-size:12px;color:var(--muted);margin-top:5px;}
   .btn{width:100%;background:var(--accent);color:var(--accent-ink);border:none;padding:17px;border-radius:10px;font-size:17px;font-weight:700;cursor:pointer;margin-top:8px;}
   .btn:active{filter:brightness(0.92);}
