@@ -975,6 +975,101 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
   a.click();
 });
 
+// ---------- MAERSK Summary ----------
+const MAERSK_SUMMARY_COMPANY = 'MAERSK SINGAPORE PTE LTD';
+let maerskFiltersDefaulted = false;
+
+function getMaerskJobs(){
+  return DATA.jobs.filter(j=>(j.company||'').trim().toUpperCase() === MAERSK_SUMMARY_COMPANY);
+}
+
+function populateMaerskFilterOptions(){
+  const maerskJobs = getMaerskJobs();
+  const fYear = document.getElementById('fMaerskYear');
+  const years = [...new Set(maerskJobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)))].sort();
+  if(fYear.options.length<=1){
+    years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
+  }
+  const fMonth = document.getElementById('fMaerskMonth');
+  if(fMonth.options.length<=1){
+    MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;fMonth.appendChild(o);});
+  }
+  if(!maerskFiltersDefaulted && maerskJobs.length){
+    const latestDate = maerskJobs.map(j=>j.date).filter(Boolean).sort().slice(-1)[0];
+    if(latestDate){
+      fYear.value = latestDate.slice(0,4);
+      fMonth.value = latestDate.slice(5,7);
+    }
+    maerskFiltersDefaulted = true;
+  }
+}
+
+function renderMaerskSummary(){
+  populateMaerskFilterOptions();
+  const year = document.getElementById('fMaerskYear').value;
+  const month = document.getElementById('fMaerskMonth').value;
+
+  let rows = getMaerskJobs();
+  if(year) rows = rows.filter(j=>(j.date||'').slice(0,4)===year);
+  if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
+  rows.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
+
+  const totalSales = rows.reduce((s,j)=>s+(Number(j.cost)||0),0);
+  const totalPayout = rows.reduce((s,j)=>s+(Number(j.driverPayout)||0),0);
+  const totalCoy = rows.reduce((s,j)=>s+(Number(j.coyFund)||0),0);
+  document.getElementById('maerskCards').innerHTML = `
+    <div class="card"><div class="label">MAERSK Jobs</div><div class="value">${rows.length}</div></div>
+    <div class="card"><div class="label">Total Sales</div><div class="value">${fmtMoney(totalSales)}</div></div>
+    <div class="card"><div class="label">Driver Payout</div><div class="value">${fmtMoney(totalPayout)}</div></div>
+    <div class="card"><div class="label">Company Fund</div><div class="value">${fmtMoney(totalCoy)}</div></div>
+  `;
+
+  document.getElementById('maerskCount').textContent = `${rows.length} job${rows.length===1?'':'s'}`;
+  const {items:pageRows, page, totalPages} = paginate('maersk', rows);
+  document.querySelector('#maerskTable tbody').innerHTML = pageRows.length ? pageRows.map(j=>`
+    <tr>
+      <td>${fmtDate(j.date)}</td>
+      <td>${j.invoice||''}</td>
+      <td>${j.driver||''}</td>
+      <td>${j.jobType||''}</td>
+      <td>${j.hostName||''}</td>
+      <td>${j.uid||''}</td>
+      <td>${j.costCentre||''}</td>
+      <td class="num">${j.qty ?? ''}</td>
+      <td class="num">${fmtMoney(j.unitCost)}</td>
+      <td class="num">${fmtMoney(j.cost)}</td>
+      <td class="num">${fmtMoney(j.driverPayout)}</td>
+      <td class="num">${fmtMoney(j.coyFund)}</td>
+      <td><span class="pill ${statusClass(j.paymentStatus)}">${j.paymentStatus||'Unpaid'}</span></td>
+    </tr>`).join('') : `<tr><td colspan="13" class="empty">No MAERSK SINGAPORE PTE LTD jobs found</td></tr>`;
+  renderPagination('maerskPagination', 'maersk', page, totalPages, renderMaerskSummary);
+}
+document.getElementById('fMaerskYear').addEventListener('change', ()=>{ pageState.maersk=1; renderMaerskSummary(); });
+document.getElementById('fMaerskMonth').addEventListener('change', ()=>{ pageState.maersk=1; renderMaerskSummary(); });
+
+document.getElementById('exportMaerskBtn').addEventListener('click', ()=>{
+  const year = document.getElementById('fMaerskYear').value;
+  const month = document.getElementById('fMaerskMonth').value;
+  let rows = getMaerskJobs();
+  if(year) rows = rows.filter(j=>(j.date||'').slice(0,4)===year);
+  if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
+  rows.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
+
+  if(!rows.length){ alert('No MAERSK SINGAPORE PTE LTD jobs match the current filter.'); return; }
+
+  const cols = ['date','invoice','driver','jobType','hostName','uid','costCentre','details','qty','unitCost','cost','driverPayout','coyFund','paymentStatus','remarks'];
+  const headerLabels = ['Date','Invoice #','Driver','Job Type','Host','UID','Cost Centre','Trip Details','Qty','Unit Cost','Cost','Driver Payout','Company Fund','Payment Status','Remarks'];
+  const header = headerLabels.map(csvField).join(',');
+  const dataRows = rows.map(j=>cols.map(c=>csvField(c==='date'?fmtDate(j[c]):j[c])).join(','));
+  const csv = [header, ...dataRows].join('\n');
+  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const label = month ? `${year||''}${month}` : (year||'ALL');
+  a.download = `MAERSK_SINGAPORE_Summary_${label}.csv`;
+  a.click();
+});
+
 // ---------- Render all ----------
 function renderAll(){
   renderDashboard();
@@ -983,5 +1078,6 @@ function renderAll(){
   renderDrivers();
   renderClients();
   renderRates();
+  renderMaerskSummary();
 }
 // Initial render handled by initApp() after auth check
