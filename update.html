@@ -265,11 +265,16 @@ async function loadDrivers(){
   const names = data ? [...new Set(data.map(d=>d.name))] : [];
   fillSelect(document.getElementById('f_driver'), names, '— select driver —');
 }
+let ALL_CLIENTS = [];
 async function loadHosts(){
-  const {data} = await sb.from('clients').select('hostName').order('hostName');
+  const {data} = await sb.from('clients').select('hostName, costCentre, company, uid').order('hostName');
+  ALL_CLIENTS = data || [];
   const names = data ? [...new Set(data.map(c=>(c.hostName||'').trim()).filter(Boolean))].sort() : [];
   fillSelect(document.getElementById('s_host'), names, '— select host —');
   fillSelect(document.getElementById('f_host'), names, '— select or leave blank —');
+}
+function findClientByHost(hostName){
+  return ALL_CLIENTS.find(c=>(c.hostName||'').trim()===(hostName||'').trim());
 }
 
 loadDrivers();
@@ -428,10 +433,15 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
   if(!driver){ showMsg('Please select a driver.', 'error'); return; }
   if(!date){ showMsg('Please set a date.', 'error'); return; }
 
+  const client = findClientByHost(hostName);
+  const uid = client ? (client.uid || '') : extractUid(original.details);
+  const costCentre = client ? (client.costCentre || '') : extractCostCentre(original.details);
+  const company = client ? (client.company || '') : (original.company || '');
+
   const lines = [];
   lines.push(`REQUESTOR: ${hostName||''}`);
-  lines.push(`UID: ${extractUid(original.details)}`);
-  lines.push(`COST CENTRE: ${extractCostCentre(original.details)}`);
+  lines.push(`UID: ${uid}`);
+  lines.push(`COST CENTRE: ${costCentre}`);
   lines.push(`PAX: ${pax||''}`);
   if(itinerary) lines.push(itinerary);
   lines.push(`DRIVER: ${driver}`);
@@ -444,6 +454,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
 
   const update = {
     driver, date, jobType, hostName, vehicle: vehicle||null,
+    uid, costCentre, company,
     details: lines.join('\n'),
     startTime: startTime||null, endTime: endTime||null,
     qty, unitCost, cost: qty*unitCost,

@@ -216,14 +216,20 @@ async function loadDrivers(){
   fillSelect(sel, [...new Set(data.map(d=>d.name))], '— select driver —');
 }
 
+let ALL_CLIENTS = [];
 async function loadHosts(){
   const sel = document.getElementById('f_host');
-  const {data, error} = await sb.from('clients').select('hostName').order('hostName');
+  const {data, error} = await sb.from('clients').select('hostName, costCentre, company, uid').order('hostName');
   if(error || !data){
     sel.innerHTML = '<option value="">— select or leave blank —</option>';
     return;
   }
-  fillSelect(sel, [...new Set(data.map(c=>(c.hostName||'').trim()).filter(Boolean))].sort(), '— select or leave blank —');
+  ALL_CLIENTS = data;
+  const names = [...new Set(data.map(c=>(c.hostName||'').trim()).filter(Boolean))].sort();
+  fillSelect(sel, names, '— select or leave blank —');
+}
+function findClientByHost(hostName){
+  return ALL_CLIENTS.find(c=>(c.hostName||'').trim()===(hostName||'').trim());
 }
 
 function loadPax(){
@@ -336,10 +342,15 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
   if(!date){ showMsg('Please set a date.', 'error'); return; }
   if(!jobType){ showMsg('Please select a job type.', 'error'); return; }
 
+  const client = findClientByHost(hostName);
+  const uid = client?.uid || '';
+  const costCentre = client?.costCentre || '';
+  const company = client?.company || '';
+
   const lines = [];
   lines.push(`REQUESTOR: ${hostName||''}`);
-  lines.push(`UID: `);
-  lines.push(`COST CENTRE: `);
+  lines.push(`UID: ${uid}`);
+  lines.push(`COST CENTRE: ${costCentre}`);
   lines.push(`PAX: ${pax||''}`);
   if(itinerary) lines.push(itinerary);
   lines.push(`DRIVER: ${driver}`);
@@ -353,7 +364,7 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
 
   const job = {
     date, driver, jobType,
-    hostName, uid: '', costCentre: '', company: '',
+    hostName, uid, costCentre, company,
     details: lines.join('\n'),
     startTime: startTime||null, endTime: endTime||null,
     qty, unitCost, cost: qty*unitCost,
