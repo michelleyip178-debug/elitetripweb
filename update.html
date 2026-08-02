@@ -35,6 +35,7 @@
   .msg.error{background:#fdecea;color:var(--red);}
   .tripCard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px;cursor:pointer;}
   .tripCard:active{filter:brightness(0.97);}
+  .tripCard .host{font-size:12.5px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.02em;margin-bottom:4px;}
   .tripCard .top{display:flex;justify-content:space-between;font-weight:700;font-size:15px;}
   .tripCard .sub{font-size:12.5px;color:var(--muted);margin-top:4px;white-space:pre-line;}
   .empty{text-align:center;color:var(--muted);padding:30px 0;font-size:14px;}
@@ -348,6 +349,7 @@ function renderResults(){
   }
   el.innerHTML = currentJobs.map(j=>`
     <div class="tripCard" data-id="${j.id}">
+      <div class="host">${j.hostName||'(no host)'}</div>
       <div class="top"><span>${j.jobType||'(no job type)'}</span><span>S$${(Number(j.cost)||0).toFixed(2)}</span></div>
       <div class="sub">${j.driver||'(no driver)'}${j.startTime?` · ${j.startTime}${j.endTime?'–'+j.endTime:''}`:''}</div>
     </div>
