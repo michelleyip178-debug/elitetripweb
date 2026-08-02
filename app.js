@@ -112,36 +112,78 @@ function wireUppercase(el){
   if(el) wireUppercase(el);
 });
 
-// Day/Month/Year dropdowns for the Date field — a value is set the instant you pick it,
-// unlike the native date picker which needs a separate confirm/"Done" tap on some devices.
-function loadDaySelect(sel){
-  const opts = []; for(let d=1;d<=31;d++) opts.push(String(d).padStart(2,'0'));
-  fillSelect(sel, opts, '--');
+// Calendar popover for the Date field — click a day and it's selected immediately,
+// no separate confirm/"Done" tap needed.
+const CAL_MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const calState = {};
+function initDatePicker(prefix, initialValue){
+  calState[prefix] = { view: initialValue ? new Date(initialValue+'T00:00:00') : new Date(), value: initialValue || '' };
+  updateDateDisplay(prefix);
+  document.getElementById(prefix+'_display').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    toggleCalPopover(prefix);
+  });
+  document.getElementById(prefix+'_popover').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(e.target.classList.contains('calNav')){
+      const dir = Number(e.target.dataset.dir);
+      const v = calState[prefix].view;
+      calState[prefix].view = new Date(v.getFullYear(), v.getMonth()+dir, 1);
+      renderCalGrid(prefix);
+    } else if(e.target.classList.contains('day') && e.target.dataset.date){
+      calState[prefix].value = e.target.dataset.date;
+      calState[prefix].view = new Date(e.target.dataset.date+'T00:00:00');
+      updateDateDisplay(prefix);
+      document.getElementById(prefix+'_popover').style.display = 'none';
+    }
+  });
 }
-function loadMonthSelect(sel){
-  const opts = MONTHS.map((m,i)=>({value:String(i+1).padStart(2,'0'), label:m}));
-  sel.innerHTML = '<option value="">--</option>' + opts.map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
+function renderCalGrid(prefix){
+  const st = calState[prefix];
+  const y = st.view.getFullYear(), m = st.view.getMonth();
+  document.getElementById(prefix+'_label').textContent = `${CAL_MONTH_NAMES[m]} ${y}`;
+  const firstDay = new Date(y,m,1).getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const todayStr = new Date().toISOString().slice(0,10);
+  let html = ['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<firstDay;i++) html += '<div class="empty">.</div>';
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cls = ['day'];
+    if(dateStr === st.value) cls.push('selected');
+    if(dateStr === todayStr) cls.push('today');
+    html += `<div class="${cls.join(' ')}" data-date="${dateStr}">${d}</div>`;
+  }
+  document.getElementById(prefix+'_grid').innerHTML = html;
 }
-function loadYearSelect(sel){
-  const thisYear = new Date().getFullYear();
-  const opts = []; for(let y=thisYear-1;y<=thisYear+2;y++) opts.push(String(y));
-  fillSelect(sel, opts, '----');
+function updateDateDisplay(prefix){
+  const st = calState[prefix];
+  document.getElementById(prefix+'_display').textContent = st.value ? fmtDMY(st.value) : 'Select date';
 }
-function getDate(prefix){
-  const d = document.getElementById(prefix+'_d').value;
-  const m = document.getElementById(prefix+'_m').value;
-  const y = document.getElementById(prefix+'_y').value;
-  return (d==='' || m==='' || y==='') ? '' : `${y}-${m}-${d}`;
+function fmtDMY(value){
+  const [y,m,d] = value.split('-');
+  return `${d}/${m}/${y}`;
 }
+function toggleCalPopover(prefix){
+  const pop = document.getElementById(prefix+'_popover');
+  const isOpen = pop.style.display === 'block';
+  document.querySelectorAll('.calendarPopover').forEach(p=>p.style.display='none');
+  if(!isOpen){
+    pop.style.display = 'block';
+    renderCalGrid(prefix);
+  }
+}
+document.addEventListener('click', ()=>{
+  document.querySelectorAll('.calendarPopover').forEach(p=>p.style.display='none');
+});
+function getDate(prefix){ return calState[prefix]?.value || ''; }
 function setDate(prefix, value){
-  const [y,m,d] = (value||'').split('-');
-  document.getElementById(prefix+'_d').value = d || '';
-  document.getElementById(prefix+'_m').value = m || '';
-  document.getElementById(prefix+'_y').value = y || '';
+  if(!calState[prefix]){ initDatePicker(prefix, value); return; }
+  calState[prefix].value = value || '';
+  if(value) calState[prefix].view = new Date(value+'T00:00:00');
+  updateDateDisplay(prefix);
 }
-loadDaySelect(document.getElementById('f_date_d'));
-loadMonthSelect(document.getElementById('f_date_m'));
-loadYearSelect(document.getElementById('f_date_y'));
+initDatePicker('f_date', '');
 
 // Plain-text 24h HH:MM mask — avoids native <input type=time> showing AM/PM on some devices.
 function wireTimeMask(el){

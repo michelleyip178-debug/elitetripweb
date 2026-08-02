@@ -195,12 +195,16 @@
     <h3 id="jobModalTitle">New Job</h3>
     <div class="form-grid">
       <div><label>Date</label>
-        <div class="dateBox">
-          <select id="f_date_d"></select>
-          <span class="slash">/</span>
-          <select id="f_date_m"></select>
-          <span class="slash">/</span>
-          <select id="f_date_y"></select>
+        <div class="dateField">
+          <button type="button" class="dateDisplay" id="f_date_display">Select date</button>
+          <div class="calendarPopover" id="f_date_popover">
+            <div class="calHeader">
+              <button type="button" class="calNav" data-dir="-1">‹</button>
+              <span id="f_date_label"></span>
+              <button type="button" class="calNav" data-dir="1">›</button>
+            </div>
+            <div class="calGrid" id="f_date_grid"></div>
+          </div>
         </div>
       </div>
       <div><label>Invoice #</label><input type="text" id="f_invoice" placeholder="e.g. MINV2026080001"></div>
