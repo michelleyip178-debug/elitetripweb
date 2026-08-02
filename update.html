@@ -454,7 +454,7 @@ function renderResults(){
   }
   el.innerHTML = currentJobs.map(j=>`
     <div class="tripCard" data-id="${j.id}">
-      <div class="host">${j.hostName||'(no host)'}</div>
+      <div class="host">${j.hostName||'(no host)'}${j.date?` · ${fmtDMY(j.date)}`:''}</div>
       <div class="top"><span>${j.jobType||'(no job type)'}</span><span>S$${(Number(j.cost)||0).toFixed(2)}</span></div>
       <div class="sub">${j.driver||'(no driver)'}${j.startTime?` · ${j.startTime}${j.endTime?'–'+j.endTime:''}`:''}</div>
     </div>
