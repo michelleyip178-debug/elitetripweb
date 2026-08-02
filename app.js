@@ -1089,13 +1089,14 @@ function renderMaerskSummary(){
       <td>${j.hostName||''}</td>
       <td>${j.uid||''}</td>
       <td>${j.costCentre||''}</td>
+      <td>${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
       <td class="num">${j.qty ?? ''}</td>
       <td class="num">${fmtMoney(j.unitCost)}</td>
       <td class="num">${fmtMoney(j.cost)}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
       <td class="num">${fmtMoney(j.coyFund)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${j.paymentStatus||'Unpaid'}</span></td>
-    </tr>`).join('') : `<tr><td colspan="13" class="empty">No MAERSK SINGAPORE PTE LTD jobs found</td></tr>`;
+    </tr>`).join('') : `<tr><td colspan="14" class="empty">No MAERSK SINGAPORE PTE LTD jobs found</td></tr>`;
   renderPagination('maerskPagination', 'maersk', page, totalPages, renderMaerskSummary);
 }
 document.getElementById('fMaerskYear').addEventListener('change', ()=>{ pageState.maersk=1; renderMaerskSummary(); });
