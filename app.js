@@ -165,12 +165,29 @@ document.querySelectorAll('nav button').forEach(btn=>{
 });
 
 // ---------- Dashboard ----------
+let dashFiltersDefaulted = false;
+function populateDashFilterOptions(){
+  const fYear = document.getElementById('fDashYear');
+  const years = [...new Set(DATA.jobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)))].sort();
+  if(fYear.options.length<=1){
+    years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
+  }
+  if(!dashFiltersDefaulted && DATA.jobs.length){
+    const latestDate = DATA.jobs.map(j=>j.date).filter(Boolean).sort().slice(-1)[0];
+    if(latestDate) fYear.value = latestDate.slice(0,4);
+    dashFiltersDefaulted = true;
+  }
+}
+
 function renderDashboard(){
-  const jobs = DATA.jobs;
+  populateDashFilterOptions();
+  const year = document.getElementById('fDashYear').value;
+  const jobs = year ? DATA.jobs.filter(j=>(j.date||'').slice(0,4)===year) : DATA.jobs;
+  document.getElementById('monthlyTableTitle').textContent = `Monthly Totals${year?' ('+year+')':''}`;
   const totalSales = jobs.reduce((s,j)=>s+(Number(j.cost)||0),0);
   const totalPayout = jobs.reduce((s,j)=>s+(Number(j.driverPayout)||0),0);
   const totalCoy = jobs.reduce((s,j)=>s+(Number(j.coyFund)||0),0);
-  document.getElementById('headerSub').textContent = `${jobs.length} jobs logged · ${fmtMoney(totalSales)} total sales YTD`;
+  document.getElementById('headerSub').textContent = `${jobs.length} jobs logged · ${fmtMoney(totalSales)} total sales${year?' in '+year:' YTD'}`;
 
   document.getElementById('dashCards').innerHTML = `
     <div class="card"><div class="label">Total Jobs</div><div class="value">${jobs.length}</div></div>
@@ -208,6 +225,7 @@ function renderDashboard(){
     `<tr><td><span class="pill ${statusClass(s)}">${s}</span></td><td class="num">${r.jobs}</td><td class="num">${fmtMoney(r.sales)}</td></tr>`
   ).join('') : `<tr><td colspan="3" class="empty">No jobs yet</td></tr>`;
 }
+document.getElementById('fDashYear').addEventListener('change', renderDashboard);
 
 // ---------- Jobs table ----------
 let jobFiltersDefaulted = false;
@@ -527,6 +545,7 @@ document.getElementById('exportInvoicesBtn').addEventListener('click', ()=>{
 
 // ---------- Drivers ----------
 function renderDrivers(){
+  const search = document.getElementById('fDriverSearch').value.toLowerCase();
   const byDriver = {};
   DATA.jobs.forEach(j=>{
     if(!j.driver) return;
@@ -534,7 +553,10 @@ function renderDrivers(){
     byDriver[j.driver].jobs++;
     byDriver[j.driver].payout += Number(j.driverPayout)||0;
   });
-  const rows = DATA.drivers.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  let rows = DATA.drivers.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  if(search){
+    rows = rows.filter(d=>[d.name,d.vehicle,d.plate,d.phone].some(v=>(v||'').toLowerCase().includes(search)));
+  }
   const {items:pageRows, page, totalPages} = paginate('drivers', rows);
   document.querySelector('#driversTable tbody').innerHTML = pageRows.length ? pageRows.map(d=>{
     const stat = byDriver[d.name] || {jobs:0,payout:0};
@@ -548,9 +570,10 @@ function renderDrivers(){
       <td class="num">${fmtMoney(stat.payout)}</td>
       <td class="row-actions"><button onclick="openDriverModal(${d.id})">Edit</button></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="8" class="empty">No drivers yet</td></tr>`;
+  }).join('') : `<tr><td colspan="8" class="empty">No drivers found</td></tr>`;
   renderPagination('driversPagination', 'drivers', page, totalPages, renderDrivers);
 }
+document.getElementById('fDriverSearch').addEventListener('input', ()=>{ pageState.drivers=1; renderDrivers(); });
 
 function openDriverModal(id){
   editingDriverId = id || null;
@@ -675,12 +698,18 @@ document.getElementById('deleteClientBtn').addEventListener('click', async ()=>{
 
 // ---------- Job types / rates ----------
 function renderRates(){
-  const {items:pageRows, page, totalPages} = paginate('rates', DATA.rates);
-  document.querySelector('#ratesTable tbody').innerHTML = pageRows.map(r=>`
+  const search = document.getElementById('fRatesSearch').value.toLowerCase();
+  let rows = DATA.rates.slice();
+  if(search){
+    rows = rows.filter(r=>(r.jobType||'').toLowerCase().includes(search));
+  }
+  const {items:pageRows, page, totalPages} = paginate('rates', rows);
+  document.querySelector('#ratesTable tbody').innerHTML = pageRows.length ? pageRows.map(r=>`
     <tr><td>${r.jobType}</td><td class="num">${r.unitPrice}</td><td>${r.billingUnit||''}</td></tr>
-  `).join('');
+  `).join('') : `<tr><td colspan="3" class="empty">No job types found</td></tr>`;
   renderPagination('ratesPagination', 'rates', page, totalPages, renderRates);
 }
+document.getElementById('fRatesSearch').addEventListener('input', ()=>{ pageState.rates=1; renderRates(); });
 
 // ---------- Modal / form ----------
 function fillSelect(sel, values, placeholder){
