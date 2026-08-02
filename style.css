@@ -36,6 +36,10 @@
   .pill.unpaid{background:#fdecea;color:var(--red);}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
   select,input,textarea{font-family:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);}
+  .dateBox{display:flex;align-items:center;border:1px solid var(--line);border-radius:7px;background:#fff;overflow:hidden;}
+  .dateBox select{border:none;flex:1;min-width:0;text-align:center;padding:7px 2px;}
+  .dateBox select:focus{outline:none;}
+  .dateBox .slash{font-size:13px;font-weight:700;color:var(--muted);padding:0 1px;}
   input[type=text],input[type=search]{min-width:160px;}
   button.btn{background:var(--accent);color:var(--accent-ink);border:none;padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;}
   button.btn.secondary{background:#eef1f6;color:var(--ink);}

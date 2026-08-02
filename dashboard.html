@@ -194,7 +194,15 @@
   <div class="modal">
     <h3 id="jobModalTitle">New Job</h3>
     <div class="form-grid">
-      <div><label>Date</label><input type="date" id="f_date"></div>
+      <div><label>Date</label>
+        <div class="dateBox">
+          <select id="f_date_d"></select>
+          <span class="slash">/</span>
+          <select id="f_date_m"></select>
+          <span class="slash">/</span>
+          <select id="f_date_y"></select>
+        </div>
+      </div>
       <div><label>Invoice #</label><input type="text" id="f_invoice" placeholder="e.g. MINV2026080001"></div>
 
       <div><label>Driver</label><select id="f_driver"></select></div>

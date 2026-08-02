@@ -25,6 +25,18 @@
   .timeBox select{border:none;flex:1;min-width:0;text-align:center;padding:14px 4px;}
   .timeBox select:focus{outline:none;}
   .timeBox .colon{font-size:17px;font-weight:700;color:var(--muted);padding:0 2px;}
+  .dateField{position:relative;}
+  .dateDisplay{width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:14px;font-size:17px;color:var(--ink);cursor:pointer;font-family:inherit;}
+  .calendarPopover{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(20,24,34,.16);padding:12px;z-index:30;}
+  .calHeader{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-weight:700;font-size:14px;}
+  .calNav{background:none;border:none;font-size:20px;cursor:pointer;color:var(--accent);padding:2px 12px;line-height:1;}
+  .calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center;}
+  .calGrid .dow{color:var(--muted);font-weight:600;font-size:11px;padding:4px 0;}
+  .calGrid .day{padding:9px 0;border-radius:8px;cursor:pointer;font-size:14px;}
+  .calGrid .day:active{background:#eef1f6;}
+  .calGrid .day.selected{background:var(--accent);color:#fff;font-weight:700;}
+  .calGrid .day.today:not(.selected){border:1.5px solid var(--accent);}
+  .calGrid .empty{visibility:hidden;}
   .hint{font-size:12px;color:var(--muted);margin-top:5px;}
   .btn{width:100%;background:var(--accent);color:var(--accent-ink);border:none;padding:17px;border-radius:10px;font-size:17px;font-weight:700;cursor:pointer;margin-top:8px;}
   .btn:active{filter:brightness(0.92);}
@@ -51,7 +63,17 @@
 
   <div class="field">
     <label>Date</label>
-    <input type="date" id="f_date">
+    <div class="dateField">
+      <button type="button" class="dateDisplay" id="f_date_display">Select date</button>
+      <div class="calendarPopover" id="f_date_popover">
+        <div class="calHeader">
+          <button type="button" class="calNav" data-dir="-1">‹</button>
+          <span id="f_date_label"></span>
+          <button type="button" class="calNav" data-dir="1">›</button>
+        </div>
+        <div class="calGrid" id="f_date_grid"></div>
+      </div>
+    </div>
   </div>
 
   <div class="field">
@@ -259,6 +281,78 @@ function setTime(prefix, value){
   document.getElementById(prefix+'_m').value = m || '';
 }
 
+// Click-to-pick calendar for the Date field — tapping a day sets the value and
+// closes the popover immediately, no separate confirm/"Done" tap needed.
+const CAL_MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const calState = {};
+function initDatePicker(prefix, initialValue){
+  calState[prefix] = { view: initialValue ? new Date(initialValue+'T00:00:00') : new Date(), value: initialValue || '' };
+  updateDateDisplay(prefix);
+  document.getElementById(prefix+'_display').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    toggleCalPopover(prefix);
+  });
+  document.getElementById(prefix+'_popover').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(e.target.classList.contains('calNav')){
+      const dir = Number(e.target.dataset.dir);
+      const v = calState[prefix].view;
+      calState[prefix].view = new Date(v.getFullYear(), v.getMonth()+dir, 1);
+      renderCalGrid(prefix);
+    } else if(e.target.classList.contains('day') && e.target.dataset.date){
+      calState[prefix].value = e.target.dataset.date;
+      calState[prefix].view = new Date(e.target.dataset.date+'T00:00:00');
+      updateDateDisplay(prefix);
+      document.getElementById(prefix+'_popover').style.display = 'none';
+    }
+  });
+}
+function renderCalGrid(prefix){
+  const st = calState[prefix];
+  const y = st.view.getFullYear(), m = st.view.getMonth();
+  document.getElementById(prefix+'_label').textContent = `${CAL_MONTH_NAMES[m]} ${y}`;
+  const firstDay = new Date(y,m,1).getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const todayStr = new Date().toISOString().slice(0,10);
+  let html = ['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<firstDay;i++) html += '<div class="empty">.</div>';
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cls = ['day'];
+    if(dateStr === st.value) cls.push('selected');
+    if(dateStr === todayStr) cls.push('today');
+    html += `<div class="${cls.join(' ')}" data-date="${dateStr}">${d}</div>`;
+  }
+  document.getElementById(prefix+'_grid').innerHTML = html;
+}
+function updateDateDisplay(prefix){
+  const st = calState[prefix];
+  document.getElementById(prefix+'_display').textContent = st.value ? fmtDMY(st.value) : 'Select date';
+}
+function fmtDMY(value){
+  const [y,m,d] = value.split('-');
+  return `${d}/${m}/${y}`;
+}
+function toggleCalPopover(prefix){
+  const pop = document.getElementById(prefix+'_popover');
+  const isOpen = pop.style.display === 'block';
+  document.querySelectorAll('.calendarPopover').forEach(p=>p.style.display='none');
+  if(!isOpen){
+    pop.style.display = 'block';
+    renderCalGrid(prefix);
+  }
+}
+document.addEventListener('click', ()=>{
+  document.querySelectorAll('.calendarPopover').forEach(p=>p.style.display='none');
+});
+function getDate(prefix){ return calState[prefix]?.value || ''; }
+function setDate(prefix, value){
+  if(!calState[prefix]){ initDatePicker(prefix, value); return; }
+  calState[prefix].value = value || '';
+  if(value) calState[prefix].view = new Date(value+'T00:00:00');
+  updateDateDisplay(prefix);
+}
+
 fillSelect(document.getElementById('f_jobType'), JOB_TYPES, '— select job type —');
 loadDrivers();
 loadHosts();
@@ -268,7 +362,7 @@ loadMinuteSelect(document.getElementById('f_start_m'));
 loadHourSelect(document.getElementById('f_end_h'));
 loadMinuteSelect(document.getElementById('f_end_m'));
 
-document.getElementById('f_date').valueAsDate = new Date();
+initDatePicker('f_date', new Date().toISOString().slice(0,10));
 
 // Force free-text fields to uppercase, matching the ALL-CAPS convention used throughout the data.
 // Skips while an IME composition is active (e.g. typing Chinese via pinyin) so the candidate popup isn't disrupted.
@@ -326,7 +420,7 @@ function showMsg(text, type){
 
 document.getElementById('submitBtn').addEventListener('click', async ()=>{
   const driver = document.getElementById('f_driver').value;
-  const date = document.getElementById('f_date').value;
+  const date = getDate('f_date');
   const jobType = document.getElementById('f_jobType').value;
   const hostName = document.getElementById('f_host').value;
   const pax = document.getElementById('f_pax').value;

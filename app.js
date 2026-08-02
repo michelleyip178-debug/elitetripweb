@@ -112,6 +112,37 @@ function wireUppercase(el){
   if(el) wireUppercase(el);
 });
 
+// Day/Month/Year dropdowns for the Date field — a value is set the instant you pick it,
+// unlike the native date picker which needs a separate confirm/"Done" tap on some devices.
+function loadDaySelect(sel){
+  const opts = []; for(let d=1;d<=31;d++) opts.push(String(d).padStart(2,'0'));
+  fillSelect(sel, opts, '--');
+}
+function loadMonthSelect(sel){
+  const opts = MONTHS.map((m,i)=>({value:String(i+1).padStart(2,'0'), label:m}));
+  sel.innerHTML = '<option value="">--</option>' + opts.map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
+}
+function loadYearSelect(sel){
+  const thisYear = new Date().getFullYear();
+  const opts = []; for(let y=thisYear-1;y<=thisYear+2;y++) opts.push(String(y));
+  fillSelect(sel, opts, '----');
+}
+function getDate(prefix){
+  const d = document.getElementById(prefix+'_d').value;
+  const m = document.getElementById(prefix+'_m').value;
+  const y = document.getElementById(prefix+'_y').value;
+  return (d==='' || m==='' || y==='') ? '' : `${y}-${m}-${d}`;
+}
+function setDate(prefix, value){
+  const [y,m,d] = (value||'').split('-');
+  document.getElementById(prefix+'_d').value = d || '';
+  document.getElementById(prefix+'_m').value = m || '';
+  document.getElementById(prefix+'_y').value = y || '';
+}
+loadDaySelect(document.getElementById('f_date_d'));
+loadMonthSelect(document.getElementById('f_date_m'));
+loadYearSelect(document.getElementById('f_date_y'));
+
 // Plain-text 24h HH:MM mask — avoids native <input type=time> showing AM/PM on some devices.
 function wireTimeMask(el){
   el.addEventListener('input', ()=>{
@@ -341,7 +372,7 @@ function renderInvoices(){
   if(year) rows = rows.filter(j=>(j.date||'').slice(0,4)===year);
   if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
   if(date) rows = rows.filter(j=>j.date===date);
-  rows.sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.id-a.id));
+  rows.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
 
   document.getElementById('invCount').textContent = `${rows.length} record${rows.length===1?'':'s'}`;
   const {items:pageRows, page, totalPages} = paginate('invoices', rows);
@@ -915,7 +946,7 @@ function openJobModal(id){
   document.getElementById('deleteJobBtn').style.display = job ? '' : 'none';
   setupModalOptions(job?.driver);
 
-  document.getElementById('f_date').value = job?.date || '';
+  setDate('f_date', job?.date || '');
   document.getElementById('f_invoice').value = job?.invoice || '';
   document.getElementById('f_driver').value = job?.driver || '';
   document.getElementById('f_jobType').value = job?.jobType || '';
@@ -983,7 +1014,7 @@ document.getElementById('saveJobBtn').addEventListener('click', async ()=>{
   const startTime = document.getElementById('f_start').value;
   const endTime = document.getElementById('f_end').value;
   const job = {
-    date: document.getElementById('f_date').value,
+    date: getDate('f_date'),
     invoice: document.getElementById('f_invoice').value,
     driver,
     jobType: document.getElementById('f_jobType').value,
