@@ -337,6 +337,16 @@ function renderJobs(){
 
   document.getElementById('jobsCount').textContent = `${jobs.length} job${jobs.length===1?'':'s'}`;
 
+  const totalCost = jobs.reduce((s,j)=>s+(Number(j.cost)||0),0);
+  const totalDriverPayout = jobs.reduce((s,j)=>s+(Number(j.driverPayout)||0),0);
+  const totalCoyFund = jobs.reduce((s,j)=>s+(Number(j.coyFund)||0),0);
+  document.getElementById('jobsCards').innerHTML = `
+    <div class="card"><div class="label">Total Jobs</div><div class="value">${jobs.length}</div></div>
+    <div class="card"><div class="label">Total Cost</div><div class="value">${fmtMoney(totalCost)}</div></div>
+    <div class="card"><div class="label">Total Driver Payout</div><div class="value">${fmtMoney(totalDriverPayout)}</div></div>
+    <div class="card"><div class="label">Total Coy Fund</div><div class="value">${fmtMoney(totalCoyFund)}</div></div>
+  `;
+
   const {items:pageJobs, page, totalPages} = paginate('jobs', jobs);
   const tbody = document.querySelector('#jobsTable tbody');
   tbody.innerHTML = pageJobs.length ? pageJobs.map(j=>`
