@@ -78,12 +78,22 @@
       <input type="search" id="fSearch" placeholder="Search host, company, invoice, route…">
       <div class="spacer"></div>
       <span class="small muted" id="jobsCount"></span>
+      <button class="btn secondary" id="jobsClearSortBtn">Clear Sort</button>
     </div>
     <div class="panel" style="overflow:auto;max-height:70vh;">
       <table id="jobsTable">
         <thead><tr>
-          <th>Date</th><th>Invoice #</th><th>Driver</th><th>Job Type</th><th>Host / Company</th><th>Trip Details</th>
-          <th class="num">Cost</th><th class="num">Payout</th><th class="num">Coy Fund</th><th>Status</th><th></th>
+          <th class="sortable" data-key="date">Date<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="invoice">Invoice #<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="driver">Driver<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="jobType">Job Type<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="hostName">Host / Company<span class="sortArrow"></span></th>
+          <th>Trip Details</th>
+          <th class="num sortable" data-key="cost">Cost<span class="sortArrow"></span></th>
+          <th class="num sortable" data-key="driverPayout">Payout<span class="sortArrow"></span></th>
+          <th class="num sortable" data-key="coyFund">Coy Fund<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="paymentStatus">Status<span class="sortArrow"></span></th>
+          <th></th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -100,12 +110,26 @@
       <input type="search" id="fInvSearch" placeholder="Search invoice #, host, company…">
       <div class="spacer"></div>
       <span class="small muted" id="invCount"></span>
+      <button class="btn secondary" id="invoicesClearSortBtn">Clear Sort</button>
       <button class="btn secondary" id="autoAssignBtn">Auto-Assign Invoice #s</button>
       <button class="btn" id="exportInvoicesBtn">Export to QuickBooks (0)</button>
     </div>
     <div class="panel" style="overflow:auto;max-height:75vh;">
       <table id="invoicesTable">
-        <thead><tr><th><input type="checkbox" id="invSelectAll"></th><th>Date</th><th>Invoice #</th><th>Driver</th><th>Job Type</th><th>Host / Company</th><th>Trip Details</th><th class="num">Qty</th><th class="num">Unit Cost</th><th class="num">Cost</th><th>Status</th><th></th></tr></thead>
+        <thead><tr>
+          <th><input type="checkbox" id="invSelectAll"></th>
+          <th class="sortable" data-key="date">Date<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="invoice">Invoice #<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="driver">Driver<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="jobType">Job Type<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="hostName">Host / Company<span class="sortArrow"></span></th>
+          <th>Trip Details</th>
+          <th class="num sortable" data-key="qty">Qty<span class="sortArrow"></span></th>
+          <th class="num sortable" data-key="unitCost">Unit Cost<span class="sortArrow"></span></th>
+          <th class="num sortable" data-key="cost">Cost<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="paymentStatus">Status<span class="sortArrow"></span></th>
+          <th></th>
+        </tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -224,13 +248,19 @@
 
       <div class="full"><label>Itinerary</label><textarea id="f_details" rows="3" placeholder="e.g. PLQ 1 - Fairmont Singapore - PLQ 1"></textarea></div>
 
+      <div class="full">
+        <label>Additional Options</label>
+        <div id="optionsList"></div>
+        <button type="button" class="btn secondary" id="addOptionBtn" style="padding:6px 12px;font-size:12px;">+ Add Option</button>
+      </div>
+
       <div><label>Start Time</label><input type="text" id="f_start" placeholder="HH:MM" inputmode="numeric" maxlength="5"></div>
       <div><label>End Time</label><input type="text" id="f_end" placeholder="HH:MM" inputmode="numeric" maxlength="5"></div>
 
       <div><label>Qty</label><input type="number" id="f_qty" step="any" value="1"><div class="small muted" id="qtyHint" style="display:none;margin-top:3px;">Auto-set from Start/End time for hourly jobs (rounds up to the next full hour)</div></div>
       <div><label>Unit Cost (S$)</label><input type="number" id="f_unitCost" step="any"><div class="small muted" id="unitCostHint" style="display:none;margin-top:3px;">Auto-filled from Job Type / Vehicle rate card</div></div>
 
-      <div><label>Total Cost (S$)</label><input type="number" id="f_cost" step="any" readonly style="background:#f5f6f8;"><div class="small muted" style="margin-top:3px;">Qty × Unit Cost</div></div>
+      <div><label>Total Cost (S$)</label><input type="number" id="f_cost" step="any" readonly style="background:#f5f6f8;"><div class="small muted" style="margin-top:3px;">Qty × Unit Cost + Additional Options</div></div>
       <div><label>Driver Payout (S$)</label><input type="number" id="f_payout" step="any"><div class="small muted" id="payoutHint" style="margin-top:3px;display:none;">Suggested: Total Cost − Company Fund</div></div>
 
       <div><label>Company Fund (S$)</label><input type="number" id="f_coyFund" step="any"><div class="small muted" id="coyFundHint" style="margin-top:3px;display:none;">Auto-set: Qty × S$10 for this driver</div></div>
@@ -286,6 +316,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="workspace-config.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
 </body>

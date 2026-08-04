@@ -8,7 +8,8 @@
   :root{ --bg:#f5f6f8; --panel:#ffffff; --ink:#1c2230; --muted:#697086; --line:#e3e6ec; --accent:#2f6fed; --accent-ink:#ffffff; --radius:14px; }
   *{box-sizing:border-box;}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;}
-  header{padding:40px 20px 20px;text-align:center;}
+  header{padding:20px 20px 20px;text-align:center;position:relative;}
+  header a.back{display:block;text-align:left;color:var(--accent);text-decoration:none;font-size:14px;font-weight:600;margin-bottom:20px;}
   header h1{font-size:24px;margin:0;font-weight:700;}
   header .sub{font-size:14px;color:var(--muted);margin-top:6px;}
   main{flex:1;padding:20px;max-width:480px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:16px;}
@@ -27,29 +28,43 @@
 <body>
 
 <header>
-  <h1>EliteSkyline</h1>
+  <a class="back" href="/">← Home</a>
+  <h1 id="workspaceTitle">EliteSkyline</h1>
   <div class="sub">Job Log</div>
 </header>
 
-<main>
-  <a class="card primary" href="/workspace?ws=maersk">
-    <div class="icon">🚢</div>
-    <div class="text">
-      <h2>MAERSK</h2>
-      <p>Log, update, and view MAERSK job data</p>
-    </div>
-  </a>
-
-  <a class="card" href="/workspace?ws=nonmaersk">
-    <div class="icon">🚙</div>
-    <div class="text">
-      <h2>Non-MAERSK</h2>
-      <p>Log, update, and view all other job data</p>
-    </div>
-  </a>
-</main>
+<main id="cardList"></main>
 
 <footer>EliteSkyline Limo</footer>
+
+<script>
+  const ws = (new URLSearchParams(location.search).get('ws') === 'nonmaersk') ? 'nonmaersk' : 'maersk';
+  const label = ws === 'nonmaersk' ? 'Non-MAERSK' : 'MAERSK';
+  document.getElementById('workspaceTitle').textContent = `EliteSkyline — ${label}`;
+  document.getElementById('cardList').innerHTML = `
+    <a class="card primary" href="/log?ws=${ws}">
+      <div class="icon">🚗</div>
+      <div class="text">
+        <h2>Log New Trip</h2>
+        <p>Quick entry for drivers on the road</p>
+      </div>
+    </a>
+    <a class="card" href="/update?ws=${ws}">
+      <div class="icon">✏️</div>
+      <div class="text">
+        <h2>Update Trip</h2>
+        <p>Find and edit a trip you've already logged</p>
+      </div>
+    </a>
+    <a class="card" href="/dashboard?ws=${ws}">
+      <div class="icon">📊</div>
+      <div class="text">
+        <h2>View Dashboard</h2>
+        <p>Full job log, invoices, drivers &amp; reports</p>
+      </div>
+    </a>
+  `;
+</script>
 
 </body>
 </html>

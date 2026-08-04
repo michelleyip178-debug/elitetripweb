@@ -1,6 +1,9 @@
-const SUPABASE_URL = 'https://ctdtmwoztughpagavrsp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZHRtd296dHVnaHBhZ2F2cnNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1MzE3MDcsImV4cCI6MjEwMTEwNzcwN30.Rktv2pV1gE9LUi3Hr69C3YpaWBLvzwwI1jksl-7LwiY';
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// sb, TBL (table names), and RATE_MAP are defined in workspace-config.js, which is loaded
+// before this file and picks MAERSK vs Non-MAERSK based on ?ws= in the URL. Both workspaces
+// share the same Supabase project but use separate "_nonmaersk"-suffixed tables.
+document.title = document.title.replace('EliteSkyline', `EliteSkyline (${WORKSPACE_LABEL})`);
+document.querySelector('header h1').textContent = `EliteSkyline — Job Log (${WORKSPACE_LABEL})`;
+document.querySelector('.login-box .sub').textContent = `Sign in to access the ${WORKSPACE_LABEL} Job Log`;
 
 // ---------- Auth ----------
 const loginOverlay = document.getElementById('loginOverlay');
@@ -45,14 +48,15 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 const MONTH_FULL = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
 
 async function loadData(){
-  const [drivers, clients, jobTypes, rates, jobs] = await Promise.all([
-    sb.from('drivers').select('*'),
-    sb.from('clients').select('*'),
-    sb.from('job_types').select('*'),
-    sb.from('rates').select('*'),
-    sb.from('jobs').select('*'),
+  const [drivers, clients, jobTypes, rates, jobs, jobOptions] = await Promise.all([
+    sb.from(TBL.drivers).select('*'),
+    sb.from(TBL.clients).select('*'),
+    sb.from(TBL.job_types).select('*'),
+    sb.from(TBL.rates).select('*'),
+    sb.from(TBL.jobs).select('*'),
+    sb.from(TBL.job_options).select('*'),
   ]);
-  if(drivers.error || clients.error || jobTypes.error || rates.error || jobs.error){
+  if(drivers.error || clients.error || jobTypes.error || rates.error || jobs.error || jobOptions.error){
     console.error('Supabase load failed, falling back to seed data');
     return JSON.parse(JSON.stringify(window.SEED));
   }
@@ -62,10 +66,14 @@ async function loadData(){
     jobTypes: jobTypes.data.map(jt => jt.name),
     rates: rates.data,
     jobs: jobs.data,
+    jobOptions: jobOptions.data,
   };
 }
 
-let DATA = { drivers:[], clients:[], jobTypes:[], rates:[], jobs:[] };
+let DATA = { drivers:[], clients:[], jobTypes:[], rates:[], jobs:[], jobOptions:[] };
+function optionsByJob(jobId){
+  return (DATA.jobOptions||[]).filter(o=>o.job_id===jobId);
+}
 let editingId = null;
 let editingDriverId = null;
 let editingClientId = null;
@@ -320,6 +328,64 @@ function populateFilterOptions(){
   }
 }
 
+// ---------- Sortable column headers (Job Log & Invoices) ----------
+const sortState = { jobs: null, invoices: null };
+function compareValues(a, b){
+  if(typeof a === 'number' && typeof b === 'number') return a - b;
+  return String(a).localeCompare(String(b));
+}
+function wireSortableHeaders(tableId, stateKey, renderFn){
+  document.querySelectorAll(`#${tableId} th.sortable`).forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const key = th.dataset.key;
+      const cur = sortState[stateKey];
+      sortState[stateKey] = (cur && cur.key === key)
+        ? { key, dir: cur.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' };
+      renderFn();
+    });
+  });
+}
+function updateSortArrows(tableId, stateKey){
+  const st = sortState[stateKey];
+  document.querySelectorAll(`#${tableId} th.sortable`).forEach(th=>{
+    const arrow = th.querySelector('.sortArrow');
+    if(st && st.key === th.dataset.key){
+      arrow.textContent = st.dir === 'asc' ? '▲' : '▼';
+      arrow.classList.add('active');
+    } else {
+      arrow.textContent = '⇅';
+      arrow.classList.remove('active');
+    }
+  });
+}
+const JOBS_SORT_ACCESSORS = {
+  date: j=>j.date||'',
+  invoice: j=>j.invoice||'',
+  driver: j=>j.driver||'',
+  jobType: j=>j.jobType||'',
+  hostName: j=>j.hostName||'',
+  cost: j=>(Number(j.qty)||0)*(Number(j.unitCost)||0),
+  driverPayout: j=>Number(j.driverPayout)||0,
+  coyFund: j=>Number(j.coyFund)||0,
+  paymentStatus: j=>j.paymentStatus||'',
+};
+const INVOICES_SORT_ACCESSORS = {
+  date: j=>j.date||'',
+  invoice: j=>j.invoice||'',
+  driver: j=>j.driver||'',
+  jobType: j=>j.jobType||'',
+  hostName: j=>j.hostName||'',
+  qty: j=>Number(j.qty)||0,
+  unitCost: j=>Number(j.unitCost)||0,
+  cost: j=>(Number(j.qty)||0)*(Number(j.unitCost)||0),
+  paymentStatus: j=>j.paymentStatus||'',
+};
+wireSortableHeaders('jobsTable', 'jobs', ()=>renderJobs());
+wireSortableHeaders('invoicesTable', 'invoices', ()=>renderInvoices());
+document.getElementById('jobsClearSortBtn').addEventListener('click', ()=>{ sortState.jobs = null; renderJobs(); });
+document.getElementById('invoicesClearSortBtn').addEventListener('click', ()=>{ sortState.invoices = null; renderInvoices(); });
+
 function renderJobs(){
   populateFilterOptions();
   const month = document.getElementById('fMonth').value;
@@ -327,13 +393,22 @@ function renderJobs(){
   const status = document.getElementById('fStatus').value;
   const search = document.getElementById('fSearch').value.toLowerCase();
 
-  let jobs = DATA.jobs.slice().sort((a,b)=> new Date(a.date) - new Date(b.date) || (a.id-b.id));
+  let jobs = DATA.jobs.slice();
   if(month) jobs = jobs.filter(j=>monthKey(j.date)===month);
   if(driver) jobs = jobs.filter(j=>j.driver===driver);
   if(status) jobs = jobs.filter(j=> statusClass(j.paymentStatus) === status.toLowerCase());
   if(search){
     jobs = jobs.filter(j=>[j.invoice,j.hostName,j.company,j.details,j.jobType].some(v=>(v||'').toLowerCase().includes(search)));
   }
+
+  if(sortState.jobs){
+    const acc = JOBS_SORT_ACCESSORS[sortState.jobs.key];
+    const dir = sortState.jobs.dir === 'asc' ? 1 : -1;
+    jobs.sort((a,b)=> dir * compareValues(acc(a), acc(b)));
+  } else {
+    jobs.sort((a,b)=> new Date(a.date) - new Date(b.date) || (a.id-b.id));
+  }
+  updateSortArrows('jobsTable', 'jobs');
 
   document.getElementById('jobsCount').textContent = `${jobs.length} job${jobs.length===1?'':'s'}`;
 
@@ -357,12 +432,26 @@ function renderJobs(){
       <td>${j.jobType||''}</td>
       <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
-      <td class="num">${fmtMoney(j.cost)}</td>
+      <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
       <td class="num">${fmtMoney(j.coyFund)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${j.paymentStatus||'Unpaid'}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>
+    ${optionsByJob(j.id).map(o=>`
+    <tr>
+      <td>${fmtDate(j.date)}</td>
+      <td>${j.invoice||''}</td>
+      <td>${j.driver||''}</td>
+      <td>${o.optionType||''}</td>
+      <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
+      <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
+      <td class="num">${fmtMoney(o.amount)}</td>
+      <td class="num">${fmtMoney(j.driverPayout)}</td>
+      <td class="num">${fmtMoney(j.coyFund)}</td>
+      <td><span class="pill ${statusClass(j.paymentStatus)}">${j.paymentStatus||'Unpaid'}</span></td>
+      <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
+    </tr>`).join('')}
   `).join('') : `<tr><td colspan="11" class="empty">No jobs match these filters</td></tr>`;
   renderPagination('jobsPagination', 'jobs', page, totalPages, renderJobs);
 }
@@ -424,7 +513,15 @@ function renderInvoices(){
   if(year) rows = rows.filter(j=>(j.date||'').slice(0,4)===year);
   if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
   if(date) rows = rows.filter(j=>j.date===date);
-  rows.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
+
+  if(sortState.invoices){
+    const acc = INVOICES_SORT_ACCESSORS[sortState.invoices.key];
+    const dir = sortState.invoices.dir === 'asc' ? 1 : -1;
+    rows.sort((a,b)=> dir * compareValues(acc(a), acc(b)));
+  } else {
+    rows.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
+  }
+  updateSortArrows('invoicesTable', 'invoices');
 
   document.getElementById('invCount').textContent = `${rows.length} record${rows.length===1?'':'s'}`;
   const {items:pageRows, page, totalPages} = paginate('invoices', rows);
@@ -443,10 +540,25 @@ function renderInvoices(){
       <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
       <td class="num">${j.qty ?? ''}</td>
       <td class="num">${fmtMoney(j.unitCost)}</td>
-      <td class="num">${fmtMoney(j.cost)}</td>
+      <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${j.paymentStatus||'Unpaid'}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
-    </tr>`;
+    </tr>
+    ${optionsByJob(j.id).map(o=>`
+    <tr>
+      <td></td>
+      <td>${fmtDate(j.date)}</td>
+      <td>${inv}</td>
+      <td>${j.driver||''}</td>
+      <td>${o.optionType||''}</td>
+      <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
+      <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
+      <td class="num">1</td>
+      <td class="num">${fmtMoney(o.amount)}</td>
+      <td class="num">${fmtMoney(o.amount)}</td>
+      <td><span class="pill ${statusClass(j.paymentStatus)}">${j.paymentStatus||'Unpaid'}</span></td>
+      <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
+    </tr>`).join('')}`;
   }).join('') : `<tr><td colspan="12" class="empty">No records found</td></tr>`;
   renderPagination('invoicesPagination', 'invoices', page, totalPages, renderInvoices);
   const checkable = [...document.querySelectorAll('.inv-check')];
@@ -520,7 +632,7 @@ async function autoAssignInvoiceNumbers(){
 
   for(const a of assignments){
     const ids = a.jobs.map(j=>j.id);
-    const {error} = await sb.from('jobs').update({invoice:a.invNum}).in('id', ids);
+    const {error} = await sb.from(TBL.jobs).update({invoice:a.invNum}).in('id', ids);
     if(error){ alert('Failed to assign invoice '+a.invNum+': '+error.message); return; }
     a.jobs.forEach(j=>{ j.invoice = a.invNum; });
   }
@@ -724,12 +836,12 @@ document.getElementById('saveDriverBtn').addEventListener('click', async ()=>{
   };
   if(!driver.name){ alert('Please enter a driver name.'); return; }
   if(editingDriverId){
-    const {error} = await sb.from('drivers').update(driver).eq('id', editingDriverId);
+    const {error} = await sb.from(TBL.drivers).update(driver).eq('id', editingDriverId);
     if(error){ alert('Save failed: '+error.message); return; }
     const idx = DATA.drivers.findIndex(d=>d.id===editingDriverId);
     DATA.drivers[idx] = {...driver, id: editingDriverId};
   } else {
-    const {data, error} = await sb.from('drivers').insert(driver).select();
+    const {data, error} = await sb.from(TBL.drivers).insert(driver).select();
     if(error){ alert('Save failed: '+error.message); return; }
     DATA.drivers.push(data[0]);
   }
@@ -740,7 +852,7 @@ document.getElementById('deactivateDriverBtn').addEventListener('click', async (
   if(!editingDriverId) return;
   const d = DATA.drivers.find(x=>x.id===editingDriverId);
   const nextActive = d.active === false;
-  const {error} = await sb.from('drivers').update({active: nextActive}).eq('id', editingDriverId);
+  const {error} = await sb.from(TBL.drivers).update({active: nextActive}).eq('id', editingDriverId);
   if(error){ alert('Update failed: '+error.message); return; }
   d.active = nextActive;
   closeDriverModal();
@@ -794,12 +906,12 @@ document.getElementById('saveClientBtn').addEventListener('click', async ()=>{
   };
   if(!client.hostName){ alert('Please enter a host name.'); return; }
   if(editingClientId){
-    const {error} = await sb.from('clients').update(client).eq('id', editingClientId);
+    const {error} = await sb.from(TBL.clients).update(client).eq('id', editingClientId);
     if(error){ alert('Save failed: '+error.message); return; }
     const idx = DATA.clients.findIndex(c=>c.id===editingClientId);
     DATA.clients[idx] = {...client, id: editingClientId};
   } else {
-    const {data, error} = await sb.from('clients').insert(client).select();
+    const {data, error} = await sb.from(TBL.clients).insert(client).select();
     if(error){ alert('Save failed: '+error.message); return; }
     DATA.clients.push(data[0]);
   }
@@ -809,7 +921,7 @@ document.getElementById('saveClientBtn').addEventListener('click', async ()=>{
 document.getElementById('deleteClientBtn').addEventListener('click', async ()=>{
   if(!editingClientId) return;
   if(!confirm('Delete this client?')) return;
-  const {error} = await sb.from('clients').delete().eq('id', editingClientId);
+  const {error} = await sb.from(TBL.clients).delete().eq('id', editingClientId);
   if(error){ alert('Delete failed: '+error.message); return; }
   DATA.clients = DATA.clients.filter(c=>c.id!==editingClientId);
   closeClientModal();
@@ -861,10 +973,45 @@ function isSpecialFundDriver(name){
   return SPECIAL_FUND_DRIVERS.has((name||'').trim().toUpperCase());
 }
 
+// Additional Options: a repeatable list where each row picks one of the
+// non-hourly, non-transfer Job Types (e.g. Additional Stop, Waiting Charge)
+// plus an amount, rolling into the job's Total Cost.
+const ADDITIONAL_OPTIONS = ['ADDITIONAL CHARGE','ADDITIONAL STOP (LOCAL)','ADDITIONAL STOP (MALAYSIA)','ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)','ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)','ARRIVAL (DRIVE WAY PICK UP)','ARRIVAL (MEET & GREET)','CANCELLATION (100%)','CANCELLATION (25%)','CANCELLATION (50%)','DEPARTURE','MIDNIGHT SURCHARGE (LOCAL)','MIDNIGHT SURCHARGE (MALAYSIA)','MISCELLANEOUS','TOUR GUIDE (MIN 2)','WAITING CHARGE (15 MINS/BLOCK)','WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)'];
+function sumExtras(){
+  return [...document.querySelectorAll('#optionsList .optionAmount')].reduce((s,el)=>s+(Number(el.value)||0),0);
+}
+function applyOptionRate(row){
+  const optionType = row.querySelector('.optionType').value;
+  const map = getRateMapping(optionType);
+  if(!map) return;
+  if(map.flat != null){
+    row.querySelector('.optionAmount').value = map.flat;
+  } else if(map.byVehicle){
+    const vehicle = document.getElementById('f_vehicle').value;
+    if(vehicle && map.byVehicle[vehicle] != null) row.querySelector('.optionAmount').value = map.byVehicle[vehicle];
+  }
+  recalc();
+}
+function addOptionRow(optionType, amount){
+  const list = document.getElementById('optionsList');
+  const row = document.createElement('div');
+  row.className = 'optionRow';
+  row.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;';
+  row.innerHTML = `<select class="optionType" style="flex:2;"><option value="">— select option —</option>${ADDITIONAL_OPTIONS.map(o=>`<option value="${o.replace(/"/g,'&quot;')}">${o}</option>`).join('')}</select>
+    <input type="number" class="optionAmount" value="${amount ?? ''}" placeholder="Amount (S$)" step="any" style="flex:1;">
+    <button type="button" class="btn secondary removeRowBtn" style="padding:6px 10px;flex:0 0 auto;">✕</button>`;
+  row.querySelector('.optionType').value = optionType || '';
+  row.querySelector('.removeRowBtn').addEventListener('click', ()=>{ row.remove(); recalc(); });
+  row.querySelector('.optionAmount').addEventListener('input', recalc);
+  row.querySelector('.optionType').addEventListener('change', ()=>applyOptionRate(row));
+  list.appendChild(row);
+}
+document.getElementById('addOptionBtn').addEventListener('click', ()=>addOptionRow('',''));
+
 function recalc(){
   const qty = Number(document.getElementById('f_qty').value)||0;
   const unitCost = Number(document.getElementById('f_unitCost').value)||0;
-  const cost = qty*unitCost;
+  const cost = qty*unitCost + sumExtras();
   document.getElementById('f_cost').value = cost || '';
 
   const driver = document.getElementById('f_driver').value;
@@ -922,31 +1069,7 @@ wireTimeMask(document.getElementById('f_end'));
 ['f_start','f_end','f_jobType'].forEach(id=>document.getElementById(id).addEventListener('change', updateQtyFromTime));
 
 // ---------- Rate card: Job Type (+ Vehicle Type where the rate varies by vehicle) -> Unit Cost ----------
-// Built from the "QB Job Types" rate sheet, mapped onto the generic Job Type list used for entry.
-const RATE_MAP = {
-  'ADDITIONAL STOP (LOCAL)': { flat: 30 },
-  'ADDITIONAL STOP (MALAYSIA)': { flat: 30 },
-  'ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)': { flat: 30 },
-  'ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)': { flat: 15 },
-  'ARRIVAL (MEET & GREET)': { byVehicle: { 'MINI VAN':90, 'MPV/ALPHARD':90, 'SALOON':70 } },
-  'CANCELLATION (100%)': { flat: 140 },
-  'CANCELLATION (50%)': { flat: 70 },
-  'DEPARTURE': { byVehicle: { 'MINI VAN':80, 'MPV/ALPHARD':80, 'SALOON':60 } },
-  'HOURLY (LOCAL)': { byVehicle: { 'LARGE BUS':100, 'MINI BUS':90, 'MINI VAN':70, 'MPV/ALPHARD':70, 'SALOON':60 } },
-  'HOURLY (MALAYSIA)': { byVehicle: { 'MINI VAN':80, 'MPV/ALPHARD':90, 'SALOON':70 } },
-  'MIDNIGHT SURCHARGE (LOCAL)': { flat: 15 },
-  'MIDNIGHT SURCHARGE (MALAYSIA)': { flat: 20 },
-  'TOUR GUIDE (MIN 2)': { flat: 50 },
-  'TRANSFER (CROSS BORDER)(MINI VAN)': { flat: 160 },
-  'TRANSFER (CROSS BORDER)(MPV)': { flat: 170 },
-  'TRANSFER (CROSS BORDER)(SALOON)': { flat: 150 },
-  'TRANSFER (LOCAL)': { byVehicle: { 'LARGE BUS':160, 'MINI BUS':130, 'MINI VAN':70, 'MPV/ALPHARD':70, 'SALOON':55 } },
-  'TRANSFER (TUAS)': { byVehicle: { 'LARGE BUS':185, 'MINI BUS':150, 'MINI VAN':90, 'MPV/ALPHARD':90, 'SALOON':80 } },
-  'WAITING CHARGE (15 MINS/BLOCK)': { flat: 20 },
-  'WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)': { flat: 25 },
-  // ADDITIONAL CHARGE, ARRIVAL (DRIVE WAY PICK UP), CANCELLATION (25%), DISPOSAL, MISCELLANEOUS:
-  // no fixed rate on file — unit cost stays manual for these.
-};
+// RATE_MAP comes from workspace-config.js (picks MAERSK vs Non-MAERSK pricing based on ?ws=).
 function getRateMapping(jobType){
   return RATE_MAP[(jobType||'').trim()] || null;
 }
@@ -991,7 +1114,7 @@ document.getElementById('f_jobType').addEventListener('change', ()=>{
 });
 document.getElementById('f_vehicle').addEventListener('change', applyRateToUnitCost);
 
-function openJobModal(id){
+async function openJobModal(id){
   editingId = id || null;
   const job = id ? DATA.jobs.find(j=>j.id===id) : null;
   document.getElementById('jobModalTitle').textContent = job ? 'Edit Job' : 'New Job';
@@ -1027,6 +1150,12 @@ function openJobModal(id){
   document.getElementById('f_remarks').value = job?.remarks || '';
   toggleQtyHint();
 
+  document.getElementById('optionsList').innerHTML = '';
+  if(id){
+    const {data: options} = await sb.from(TBL.job_options).select('*').eq('job_id', id).order('id');
+    (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount));
+  }
+
   document.getElementById('jobModalBg').classList.add('active');
 }
 function closeJobModal(){
@@ -1055,6 +1184,19 @@ function buildTripDetails({hostName, uid, costCentre, pax, itinerary, driver, st
     lines.push('TIME: ');
   }
   return lines.join('\n');
+}
+
+async function syncStopsAndExtras(jobId){
+  const options = [...document.querySelectorAll('#optionsList .optionRow')]
+    .map(row=>({
+      job_id: jobId,
+      optionType: row.querySelector('.optionType').value,
+      amount: Number(row.querySelector('.optionAmount').value)||0,
+    }))
+    .filter(o=>o.optionType);
+
+  await sb.from(TBL.job_options).delete().eq('job_id', jobId);
+  if(options.length) await sb.from(TBL.job_options).insert(options);
 }
 
 document.getElementById('saveJobBtn').addEventListener('click', async ()=>{
@@ -1089,27 +1231,34 @@ document.getElementById('saveJobBtn').addEventListener('click', async ()=>{
   if(!job.date){ alert('Please set a date.'); return; }
   if(editingId){
     job.id = editingId;
-    const {error} = await sb.from('jobs').update(job).eq('id', editingId);
+    const {error} = await sb.from(TBL.jobs).update(job).eq('id', editingId);
     if(error){ alert('Save failed: '+error.message); return; }
     const idx = DATA.jobs.findIndex(j=>j.id===editingId);
     DATA.jobs[idx] = job;
   } else {
-    const {data, error} = await sb.from('jobs').insert(job).select();
+    const {data, error} = await sb.from(TBL.jobs).insert(job).select();
     if(error){ alert('Save failed: '+error.message); return; }
     job.id = data[0].id;
     DATA.jobs.push(job);
   }
+  await syncStopsAndExtras(job.id);
   closeJobModal();
   renderAll();
 });
 document.getElementById('deleteJobBtn').addEventListener('click', async ()=>{
   if(!editingId) return;
   if(!confirm('Delete this job entry?')) return;
-  const {error} = await sb.from('jobs').delete().eq('id', editingId);
-  if(error){ alert('Delete failed: '+error.message); return; }
-  DATA.jobs = DATA.jobs.filter(j=>j.id!==editingId);
-  closeJobModal();
-  renderAll();
+  try{
+    const {error: optErr} = await sb.from(TBL.job_options).delete().eq('job_id', editingId);
+    if(optErr){ alert('Delete failed (removing options): '+optErr.message); return; }
+    const {error} = await sb.from(TBL.jobs).delete().eq('id', editingId);
+    if(error){ alert('Delete failed: '+error.message); return; }
+    DATA.jobs = DATA.jobs.filter(j=>j.id!==editingId);
+    closeJobModal();
+    renderAll();
+  } catch(err){
+    alert('Delete failed (unexpected error): '+(err?.message || err));
+  }
 });
 
 // ---------- Export CSV ----------

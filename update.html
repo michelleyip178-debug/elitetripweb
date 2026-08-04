@@ -41,6 +41,9 @@
   .btn.secondary{background:#eef1f6;color:var(--ink);}
   .btn:active{filter:brightness(0.92);}
   .btn:disabled{opacity:0.6;}
+  .optionRow{display:flex;gap:8px;margin-bottom:8px;}
+  .optionRow select,.optionRow input{margin:0;}
+  .removeRowBtn{width:auto;flex:0 0 auto;padding:0 16px;margin:0;font-size:20px;font-weight:400;}
   .msg{display:none;padding:14px 16px;border-radius:10px;font-size:14px;margin-bottom:16px;font-weight:600;}
   .msg.show{display:block;}
   .msg.success{background:#e4f7ec;color:var(--green);}
@@ -141,6 +144,12 @@
       <textarea id="f_itinerary" rows="3"></textarea>
     </div>
 
+    <div class="field">
+      <label>Additional Options</label>
+      <div id="optionsList"></div>
+      <button type="button" class="btn secondary" id="addOptionBtn" style="padding:12px;">+ Add Option</button>
+    </div>
+
     <div class="row2">
       <div class="field">
         <label>Start Time</label>
@@ -185,33 +194,13 @@
 <footer>Changes are saved directly to the job log.</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="workspace-config.js"></script>
 <script>
-const SUPABASE_URL = 'https://ctdtmwoztughpagavrsp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZHRtd296dHVnaHBhZ2F2cnNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1MzE3MDcsImV4cCI6MjEwMTEwNzcwN30.Rktv2pV1gE9LUi3Hr69C3YpaWBLvzwwI1jksl-7LwiY';
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// sb, TBL (table names), and RATE_MAP come from workspace-config.js, which picks
+// MAERSK vs Non-MAERSK based on ?ws= in the URL (same project, separate tables).
+document.title = document.title.replace('EliteSkyline', `EliteSkyline (${WORKSPACE_LABEL})`);
+document.querySelector('header .sub').textContent = `Find and edit a trip you've logged · ${WORKSPACE_LABEL}`;
 
-const RATE_MAP = {
-  'ADDITIONAL STOP (LOCAL)': { flat: 30 },
-  'ADDITIONAL STOP (MALAYSIA)': { flat: 30 },
-  'ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)': { flat: 30 },
-  'ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)': { flat: 15 },
-  'ARRIVAL (MEET & GREET)': { byVehicle: { 'MINI VAN':90, 'MPV/ALPHARD':90, 'SALOON':70 } },
-  'CANCELLATION (100%)': { flat: 140 },
-  'CANCELLATION (50%)': { flat: 70 },
-  'DEPARTURE': { byVehicle: { 'MINI VAN':80, 'MPV/ALPHARD':80, 'SALOON':60 } },
-  'HOURLY (LOCAL)': { byVehicle: { 'LARGE BUS':100, 'MINI BUS':90, 'MINI VAN':70, 'MPV/ALPHARD':70, 'SALOON':60 } },
-  'HOURLY (MALAYSIA)': { byVehicle: { 'MINI VAN':80, 'MPV/ALPHARD':90, 'SALOON':70 } },
-  'MIDNIGHT SURCHARGE (LOCAL)': { flat: 15 },
-  'MIDNIGHT SURCHARGE (MALAYSIA)': { flat: 20 },
-  'TOUR GUIDE (MIN 2)': { flat: 50 },
-  'TRANSFER (CROSS BORDER)(MINI VAN)': { flat: 160 },
-  'TRANSFER (CROSS BORDER)(MPV)': { flat: 170 },
-  'TRANSFER (CROSS BORDER)(SALOON)': { flat: 150 },
-  'TRANSFER (LOCAL)': { byVehicle: { 'LARGE BUS':160, 'MINI BUS':130, 'MINI VAN':70, 'MPV/ALPHARD':70, 'SALOON':55 } },
-  'TRANSFER (TUAS)': { byVehicle: { 'LARGE BUS':185, 'MINI BUS':150, 'MINI VAN':90, 'MPV/ALPHARD':90, 'SALOON':80 } },
-  'WAITING CHARGE (15 MINS/BLOCK)': { flat: 20 },
-  'WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)': { flat: 25 },
-};
 function getRateMapping(jobType){
   return RATE_MAP[(jobType||'').trim()] || null;
 }
@@ -365,14 +354,43 @@ function extractCostCentre(text){
   return m ? m[1].trim() : '';
 }
 
+const ADDITIONAL_OPTIONS = ['ADDITIONAL CHARGE','ADDITIONAL STOP (LOCAL)','ADDITIONAL STOP (MALAYSIA)','ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)','ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)','ARRIVAL (DRIVE WAY PICK UP)','ARRIVAL (MEET & GREET)','CANCELLATION (100%)','CANCELLATION (25%)','CANCELLATION (50%)','DEPARTURE','MIDNIGHT SURCHARGE (LOCAL)','MIDNIGHT SURCHARGE (MALAYSIA)','MISCELLANEOUS','TOUR GUIDE (MIN 2)','WAITING CHARGE (15 MINS/BLOCK)','WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)'];
+function sumExtras(){
+  return [...document.querySelectorAll('#optionsList .optionAmount')].reduce((s,el)=>s+(Number(el.value)||0),0);
+}
+function applyOptionRate(row){
+  const optionType = row.querySelector('.optionType').value;
+  const map = getRateMapping(optionType);
+  if(!map) return;
+  if(map.flat != null){
+    row.querySelector('.optionAmount').value = map.flat;
+  } else if(map.byVehicle){
+    const vehicle = document.getElementById('f_vehicle').value;
+    if(vehicle && map.byVehicle[vehicle] != null) row.querySelector('.optionAmount').value = map.byVehicle[vehicle];
+  }
+}
+function addOptionRow(optionType, amount){
+  const list = document.getElementById('optionsList');
+  const row = document.createElement('div');
+  row.className = 'optionRow';
+  row.innerHTML = `<select class="optionType" style="flex:2;"><option value="">— select option —</option>${ADDITIONAL_OPTIONS.map(o=>`<option value="${o.replace(/"/g,'&quot;')}">${o}</option>`).join('')}</select>
+    <input type="number" class="optionAmount" value="${amount ?? ''}" placeholder="Amount (S$)" step="any" style="flex:1;">
+    <button type="button" class="btn secondary removeRowBtn">✕</button>`;
+  row.querySelector('.optionType').value = optionType || '';
+  row.querySelector('.removeRowBtn').addEventListener('click', ()=>row.remove());
+  row.querySelector('.optionType').addEventListener('change', ()=>applyOptionRate(row));
+  list.appendChild(row);
+}
+document.getElementById('addOptionBtn').addEventListener('click', ()=>addOptionRow('',''));
+
 async function loadDrivers(){
-  const {data} = await sb.from('drivers').select('name, active').eq('active', true).order('name');
+  const {data} = await sb.from(TBL.drivers).select('name, active').eq('active', true).order('name');
   const names = data ? [...new Set(data.map(d=>d.name))] : [];
   fillSelect(document.getElementById('f_driver'), names, '— select driver —');
 }
 let ALL_CLIENTS = [];
 async function loadHosts(){
-  const {data} = await sb.from('clients').select('hostName, costCentre, company, uid').order('hostName');
+  const {data} = await sb.from(TBL.clients).select('hostName, costCentre, company, uid').order('hostName');
   ALL_CLIENTS = data || [];
   const names = data ? [...new Set(data.map(c=>(c.hostName||'').trim()).filter(Boolean))].sort() : [];
   fillSelect(document.getElementById('s_host'), names, '— select host —');
@@ -435,7 +453,7 @@ document.getElementById('findBtn').addEventListener('click', async ()=>{
   const btn = document.getElementById('findBtn');
   btn.disabled = true;
   btn.textContent = 'Searching…';
-  let query = sb.from('jobs').select('*').order('id');
+  let query = sb.from(TBL.jobs).select('*').order('id');
   if(date) query = query.eq('date', date);
   const {data, error} = await query;
   btn.disabled = false;
@@ -464,7 +482,7 @@ function renderResults(){
   });
 }
 
-function openEdit(id){
+async function openEdit(id){
   const job = currentJobs.find(j=>j.id===id);
   if(!job) return;
   editingId = id;
@@ -489,6 +507,11 @@ function openEdit(id){
   document.getElementById('f_unitCost').value = job.unitCost ?? '';
   document.getElementById('f_remarks').value = job.remarks || '';
   document.getElementById('qtyHint').style.display = isHourlyJobType(job.jobType) ? '' : 'none';
+
+  document.getElementById('optionsList').innerHTML = '';
+  const {data: options} = await sb.from(TBL.job_options).select('*').eq('job_id', id).order('id');
+  (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount));
+
   showEdit();
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -570,14 +593,25 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     uid, costCentre, company,
     details: lines.join('\n'),
     startTime: startTime||null, endTime: endTime||null,
-    qty, unitCost, cost: qty*unitCost,
+    qty, unitCost, cost: qty*unitCost + sumExtras(),
     remarks,
   };
 
   const btn = document.getElementById('saveBtn');
   btn.disabled = true;
   btn.textContent = 'Saving…';
-  const {error} = await sb.from('jobs').update(update).eq('id', editingId);
+  const {error} = await sb.from(TBL.jobs).update(update).eq('id', editingId);
+  if(!error){
+    const options = [...document.querySelectorAll('#optionsList .optionRow')]
+      .map(row=>({
+        job_id: editingId,
+        optionType: row.querySelector('.optionType').value,
+        amount: Number(row.querySelector('.optionAmount').value)||0,
+      }))
+      .filter(o=>o.optionType);
+    await sb.from(TBL.job_options).delete().eq('job_id', editingId);
+    if(options.length) await sb.from(TBL.job_options).insert(options);
+  }
   btn.disabled = false;
   btn.textContent = 'Save Changes';
 

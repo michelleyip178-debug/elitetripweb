@@ -12,7 +12,7 @@
   nav::-webkit-scrollbar{display:none;}
   nav button{background:none;border:none;padding:10px 14px;font-size:13.5px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;flex:0 0 auto;}
   nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
-  main{padding:20px;max-width:1400px;margin:0 auto;}
+  main{padding:20px;max-width:1900px;margin:0 auto;}
   .view{display:none;}
   .view.active{display:block;}
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;}
@@ -29,6 +29,10 @@
   td.details-cell{white-space:normal;}
   th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.02em;position:sticky;top:0;background:var(--panel);z-index:5;will-change:transform;transform:translateZ(0);}
   tr:hover td{background:#fafbfc;}
+  th.sortable{cursor:pointer;user-select:none;white-space:nowrap;}
+  th.sortable:hover{color:var(--ink);}
+  .sortArrow{display:inline-block;margin-left:4px;font-size:10px;opacity:.35;}
+  .sortArrow.active{opacity:1;color:var(--accent);}
   .num{text-align:right;font-variant-numeric:tabular-nums;}
   .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
   .pill.paid{background:#e4f7ec;color:var(--green);}

@@ -39,8 +39,12 @@
   .calGrid .empty{min-width:0;visibility:hidden;}
   .hint{font-size:12px;color:var(--muted);margin-top:5px;}
   .btn{width:100%;background:var(--accent);color:var(--accent-ink);border:none;padding:17px;border-radius:10px;font-size:17px;font-weight:700;cursor:pointer;margin-top:8px;}
+  .btn.secondary{background:#eef1f6;color:var(--ink);}
   .btn:active{filter:brightness(0.92);}
   .btn:disabled{opacity:0.6;}
+  .optionRow{display:flex;gap:8px;margin-bottom:8px;}
+  .optionRow select,.optionRow input{margin:0;}
+  .removeRowBtn{width:auto;flex:0 0 auto;padding:0 16px;margin:0;font-size:20px;font-weight:400;}
   .msg{display:none;padding:14px 16px;border-radius:10px;font-size:14px;margin-bottom:16px;font-weight:600;}
   .msg.show{display:block;}
   .msg.success{background:#e4f7ec;color:var(--green);}
@@ -106,6 +110,12 @@
     <textarea id="f_itinerary" rows="3" placeholder="e.g. PLQ 1 - Fairmont Singapore - PLQ 1"></textarea>
   </div>
 
+  <div class="field">
+    <label>Additional Options</label>
+    <div id="optionsList"></div>
+    <button type="button" class="btn secondary" id="addOptionBtn" style="padding:12px;">+ Add Option</button>
+  </div>
+
   <div class="row2">
     <div class="field">
       <label>Start Time</label>
@@ -154,36 +164,13 @@
 <footer>Submitted trips are reviewed and finalized by the office.</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="workspace-config.js"></script>
 <script>
-const SUPABASE_URL = 'https://ctdtmwoztughpagavrsp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZHRtd296dHVnaHBhZ2F2cnNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1MzE3MDcsImV4cCI6MjEwMTEwNzcwN30.Rktv2pV1gE9LUi3Hr69C3YpaWBLvzwwI1jksl-7LwiY';
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// sb, TBL (table names), and RATE_MAP come from workspace-config.js, which picks
+// MAERSK vs Non-MAERSK based on ?ws= in the URL (same project, separate tables).
+document.title = document.title.replace('EliteSkyline', `EliteSkyline (${WORKSPACE_LABEL})`);
+document.querySelector('header .sub').textContent = `Quick entry for drivers · ${WORKSPACE_LABEL}`;
 
-// Rate card: Job Type -> flat unit cost, or unit cost by vehicle type
-const RATE_MAP = {
-  'ADDITIONAL STOP (LOCAL)': { flat: 30 },
-  'ADDITIONAL STOP (MALAYSIA)': { flat: 30 },
-  'ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)': { flat: 30 },
-  'ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)': { flat: 15 },
-  'ARRIVAL (MEET & GREET)': { byVehicle: { 'MINI VAN':90, 'MPV/ALPHARD':90, 'SALOON':70 } },
-  'CANCELLATION (100%)': { flat: 140 },
-  'CANCELLATION (50%)': { flat: 70 },
-  'DEPARTURE': { byVehicle: { 'MINI VAN':80, 'MPV/ALPHARD':80, 'SALOON':60 } },
-  'HOURLY (LOCAL)': { byVehicle: { 'LARGE BUS':100, 'MINI BUS':90, 'MINI VAN':70, 'MPV/ALPHARD':70, 'SALOON':60 } },
-  'HOURLY (MALAYSIA)': { byVehicle: { 'MINI VAN':80, 'MPV/ALPHARD':90, 'SALOON':70 } },
-  'MIDNIGHT SURCHARGE (LOCAL)': { flat: 15 },
-  'MIDNIGHT SURCHARGE (MALAYSIA)': { flat: 20 },
-  'TOUR GUIDE (MIN 2)': { flat: 50 },
-  'TRANSFER (CROSS BORDER)(MINI VAN)': { flat: 160 },
-  'TRANSFER (CROSS BORDER)(MPV)': { flat: 170 },
-  'TRANSFER (CROSS BORDER)(SALOON)': { flat: 150 },
-  'TRANSFER (LOCAL)': { byVehicle: { 'LARGE BUS':160, 'MINI BUS':130, 'MINI VAN':70, 'MPV/ALPHARD':70, 'SALOON':55 } },
-  'TRANSFER (TUAS)': { byVehicle: { 'LARGE BUS':185, 'MINI BUS':150, 'MINI VAN':90, 'MPV/ALPHARD':90, 'SALOON':80 } },
-  'WAITING CHARGE (15 MINS/BLOCK)': { flat: 20 },
-  'WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)': { flat: 25 },
-  // ADDITIONAL CHARGE, ARRIVAL (DRIVE WAY PICK UP), CANCELLATION (25%), DISPOSAL, MISCELLANEOUS:
-  // no fixed rate on file — unit cost stays manual for these.
-};
 function getRateMapping(jobType){
   return RATE_MAP[(jobType||'').trim()] || null;
 }
@@ -230,7 +217,7 @@ function fillSelect(sel, values, placeholder){
 
 async function loadDrivers(){
   const sel = document.getElementById('f_driver');
-  const {data, error} = await sb.from('drivers').select('name, active').eq('active', true).order('name');
+  const {data, error} = await sb.from(TBL.drivers).select('name, active').eq('active', true).order('name');
   if(error || !data){
     sel.innerHTML = '<option value="">Could not load drivers</option>';
     return;
@@ -241,7 +228,7 @@ async function loadDrivers(){
 let ALL_CLIENTS = [];
 async function loadHosts(){
   const sel = document.getElementById('f_host');
-  const {data, error} = await sb.from('clients').select('hostName, costCentre, company, uid').order('hostName');
+  const {data, error} = await sb.from(TBL.clients).select('hostName, costCentre, company, uid').order('hostName');
   if(error || !data){
     sel.innerHTML = '<option value="">— select or leave blank —</option>';
     return;
@@ -405,10 +392,42 @@ function updateQtyFromTime(){
 }
 ['f_start_h','f_start_m','f_end_h','f_end_m'].forEach(id=>document.getElementById(id).addEventListener('change', updateQtyFromTime));
 
+const ADDITIONAL_OPTIONS = ['ADDITIONAL CHARGE','ADDITIONAL STOP (LOCAL)','ADDITIONAL STOP (MALAYSIA)','ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)','ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)','ARRIVAL (DRIVE WAY PICK UP)','ARRIVAL (MEET & GREET)','CANCELLATION (100%)','CANCELLATION (25%)','CANCELLATION (50%)','DEPARTURE','MIDNIGHT SURCHARGE (LOCAL)','MIDNIGHT SURCHARGE (MALAYSIA)','MISCELLANEOUS','TOUR GUIDE (MIN 2)','WAITING CHARGE (15 MINS/BLOCK)','WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)'];
+function sumExtras(){
+  return [...document.querySelectorAll('#optionsList .optionAmount')].reduce((s,el)=>s+(Number(el.value)||0),0);
+}
+function applyOptionRate(row){
+  const optionType = row.querySelector('.optionType').value;
+  const map = getRateMapping(optionType);
+  if(!map) return;
+  if(map.flat != null){
+    row.querySelector('.optionAmount').value = map.flat;
+  } else if(map.byVehicle){
+    const vehicle = document.getElementById('f_vehicle').value;
+    if(vehicle && map.byVehicle[vehicle] != null) row.querySelector('.optionAmount').value = map.byVehicle[vehicle];
+  }
+  updateTotal();
+}
+function addOptionRow(optionType, amount){
+  const list = document.getElementById('optionsList');
+  const row = document.createElement('div');
+  row.className = 'optionRow';
+  row.innerHTML = `<select class="optionType" style="flex:2;"><option value="">— select option —</option>${ADDITIONAL_OPTIONS.map(o=>`<option value="${o.replace(/"/g,'&quot;')}">${o}</option>`).join('')}</select>
+    <input type="number" class="optionAmount" value="${amount ?? ''}" placeholder="Amount (S$)" step="any" style="flex:1;">
+    <button type="button" class="btn secondary removeRowBtn">✕</button>`;
+  row.querySelector('.optionType').value = optionType || '';
+  row.querySelector('.removeRowBtn').addEventListener('click', ()=>{ row.remove(); updateTotal(); });
+  row.querySelector('.optionAmount').addEventListener('input', updateTotal);
+  row.querySelector('.optionType').addEventListener('change', ()=>applyOptionRate(row));
+  list.appendChild(row);
+}
+document.getElementById('addOptionBtn').addEventListener('click', ()=>addOptionRow('',''));
+
 function updateTotal(){
   const qty = Number(document.getElementById('f_qty').value)||0;
   const unitCost = Number(document.getElementById('f_unitCost').value)||0;
-  document.getElementById('totalDisplay').textContent = 'S$' + (qty*unitCost).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const total = qty*unitCost + sumExtras();
+  document.getElementById('totalDisplay').textContent = 'S$' + total.toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 ['f_qty','f_unitCost'].forEach(id=>document.getElementById(id).addEventListener('input', updateTotal));
 
@@ -461,7 +480,7 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
     hostName, uid, costCentre, company,
     details: lines.join('\n'),
     startTime: startTime||null, endTime: endTime||null,
-    qty, unitCost, cost: qty*unitCost,
+    qty, unitCost, cost: qty*unitCost + sumExtras(),
     driverPayout: null, coyFund: null,
     paymentStatus: 'Unpaid',
     remarks,
@@ -471,7 +490,18 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
   btn.textContent = 'Submitting…';
-  const {error} = await sb.from('jobs').insert(job);
+  const {data, error} = await sb.from(TBL.jobs).insert(job).select();
+  if(!error && data && data[0]){
+    const jobId = data[0].id;
+    const options = [...document.querySelectorAll('#optionsList .optionRow')]
+      .map(row=>({
+        job_id: jobId,
+        optionType: row.querySelector('.optionType').value,
+        amount: Number(row.querySelector('.optionAmount').value)||0,
+      }))
+      .filter(o=>o.optionType);
+    if(options.length) await sb.from(TBL.job_options).insert(options);
+  }
   btn.disabled = false;
   btn.textContent = 'Submit Trip';
 
@@ -480,6 +510,7 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
     return;
   }
   showMsg('Trip submitted! Thank you.', 'success');
+  document.getElementById('optionsList').innerHTML = '';
   ['f_host','f_pax','f_itinerary','f_start_h','f_start_m','f_end_h','f_end_m','f_remarks'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f_jobType').value = '';
   document.getElementById('f_unitCost').value = '';
