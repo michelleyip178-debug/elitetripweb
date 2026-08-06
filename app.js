@@ -77,6 +77,7 @@ function optionsByJob(jobId){
 let editingId = null;
 let editingDriverId = null;
 let editingClientId = null;
+let editingRateId = null;
 
 function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -114,7 +115,8 @@ function wireUppercase(el){
 }
 ['f_invoice','f_company','f_uid','f_costCentre','f_pax','f_details','f_remarks',
  'd_name','d_vehicle','d_plate','d_phone','d_rateNote',
- 'c_hostName','c_uid','c_costCentre','c_company','c_code'
+ 'c_hostName','c_uid','c_costCentre','c_company','c_code',
+ 'r_jobType'
 ].forEach(id=>{
   const el = document.getElementById(id);
   if(el) wireUppercase(el);
@@ -943,11 +945,60 @@ function renderRates(){
   }
   const {items:pageRows, page, totalPages} = paginate('rates', rows);
   document.querySelector('#ratesTable tbody').innerHTML = pageRows.length ? pageRows.map(r=>`
-    <tr><td>${r.jobType}</td><td class="num">${r.unitPrice}</td><td>${r.billingUnit||''}</td></tr>
-  `).join('') : `<tr><td colspan="3" class="empty">No job types found</td></tr>`;
+    <tr><td>${r.jobType}</td><td class="num">${r.unitPrice}</td><td>${r.billingUnit||''}</td>
+    <td class="row-actions"><button onclick="openRateModal(${r.id})">Edit</button></td></tr>
+  `).join('') : `<tr><td colspan="4" class="empty">No job types found</td></tr>`;
   renderPagination('ratesPagination', 'rates', page, totalPages, renderRates);
 }
 document.getElementById('fRatesSearch').addEventListener('input', ()=>{ pageState.rates=1; renderRates(); });
+
+function openRateModal(id){
+  editingRateId = id || null;
+  const r = id ? DATA.rates.find(x=>x.id===id) : null;
+  document.getElementById('rateModalTitle').textContent = r ? 'Edit Job Type' : 'New Job Type';
+  document.getElementById('deleteRateBtn').style.display = r ? '' : 'none';
+  document.getElementById('r_jobType').value = r?.jobType || '';
+  document.getElementById('r_unitPrice').value = r?.unitPrice ?? '';
+  document.getElementById('r_billingUnit').value = r?.billingUnit || '';
+  document.getElementById('rateModalBg').classList.add('active');
+}
+function closeRateModal(){
+  document.getElementById('rateModalBg').classList.remove('active');
+  editingRateId = null;
+}
+document.getElementById('addRateBtn').addEventListener('click', ()=>openRateModal(null));
+document.getElementById('cancelRateBtn').addEventListener('click', closeRateModal);
+document.getElementById('rateModalBg').addEventListener('click', (e)=>{ if(e.target.id==='rateModalBg') closeRateModal(); });
+
+document.getElementById('saveRateBtn').addEventListener('click', async ()=>{
+  const rate = {
+    jobType: document.getElementById('r_jobType').value.trim(),
+    unitPrice: document.getElementById('r_unitPrice').value.trim(),
+    billingUnit: document.getElementById('r_billingUnit').value.trim(),
+  };
+  if(!rate.jobType){ alert('Please enter a job type.'); return; }
+  if(editingRateId){
+    const {error} = await sb.from(TBL.rates).update(rate).eq('id', editingRateId);
+    if(error){ alert('Save failed: '+error.message); return; }
+    const idx = DATA.rates.findIndex(r=>r.id===editingRateId);
+    DATA.rates[idx] = {...rate, id: editingRateId};
+  } else {
+    const {data, error} = await sb.from(TBL.rates).insert(rate).select();
+    if(error){ alert('Save failed: '+error.message); return; }
+    DATA.rates.push(data[0]);
+  }
+  closeRateModal();
+  renderAll();
+});
+document.getElementById('deleteRateBtn').addEventListener('click', async ()=>{
+  if(!editingRateId) return;
+  if(!confirm('Delete this job type?')) return;
+  const {error} = await sb.from(TBL.rates).delete().eq('id', editingRateId);
+  if(error){ alert('Delete failed: '+error.message); return; }
+  DATA.rates = DATA.rates.filter(r=>r.id!==editingRateId);
+  closeRateModal();
+  renderAll();
+});
 
 // ---------- Modal / form ----------
 function fillSelect(sel, values, placeholder){

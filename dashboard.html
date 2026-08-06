@@ -183,10 +183,11 @@
     <div class="toolbar">
       <input type="search" id="fRatesSearch" placeholder="Search job type…">
       <div class="spacer"></div>
+      <button class="btn" id="addRateBtn">+ New Job Type</button>
     </div>
     <div class="panel" style="overflow:auto;max-height:75vh;">
       <table id="ratesTable">
-        <thead><tr><th>Job Type</th><th class="num">Unit Price (S$)</th><th>Billing Unit</th></tr></thead>
+        <thead><tr><th>Job Type</th><th class="num">Unit Price (S$)</th><th>Billing Unit</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -313,6 +314,23 @@
       <button class="btn danger" id="deleteClientBtn" style="display:none;margin-right:auto;">Delete</button>
       <button class="btn secondary" id="cancelClientBtn">Cancel</button>
       <button class="btn" id="saveClientBtn">Save Client</button>
+    </div>
+  </div>
+</div>
+
+<!-- RATE / JOB TYPE MODAL -->
+<div class="modal-bg" id="rateModalBg">
+  <div class="modal">
+    <h3 id="rateModalTitle">New Job Type</h3>
+    <div class="form-grid">
+      <div class="full"><label>Job Type</label><input type="text" id="r_jobType"></div>
+      <div><label>Unit Price (S$)</label><input type="number" id="r_unitPrice" step="any"></div>
+      <div><label>Billing Unit</label><input type="text" id="r_billingUnit" placeholder="e.g. per trip"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn danger" id="deleteRateBtn" style="display:none;margin-right:auto;">Delete</button>
+      <button class="btn secondary" id="cancelRateBtn">Cancel</button>
+      <button class="btn" id="saveRateBtn">Save Job Type</button>
     </div>
   </div>
 </div>
