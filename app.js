@@ -434,8 +434,8 @@ function renderJobs(){
       <td>${j.invoice||''}</td>
       <td>${j.driver||''}</td>
       <td>${j.jobType||''}</td>
-      <td>${isHourlyJobType(j.jobType) ? (j.startTime||'') : ''}</td>
-      <td>${isHourlyJobType(j.jobType) ? (j.endTime||'') : ''}</td>
+      <td>${j.startTime||''}</td>
+      <td>${j.endTime||''}</td>
       <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
@@ -450,8 +450,8 @@ function renderJobs(){
       <td>${j.invoice||''}</td>
       <td>${j.driver||''}</td>
       <td>${o.optionType||''}</td>
-      <td>${isHourlyJobType(j.jobType) ? (j.startTime||'') : ''}</td>
-      <td>${isHourlyJobType(j.jobType) ? (j.endTime||'') : ''}</td>
+      <td>${j.startTime||''}</td>
+      <td>${j.endTime||''}</td>
       <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
