@@ -263,9 +263,9 @@
       <div><label>Unit Cost (S$)</label><input type="number" id="f_unitCost" step="any"><div class="small muted" id="unitCostHint" style="display:none;margin-top:3px;">Auto-filled from Job Type / Vehicle rate card</div></div>
 
       <div><label>Total Cost (S$)</label><input type="number" id="f_cost" step="any" readonly style="background:#f5f6f8;"><div class="small muted" style="margin-top:3px;">Qty × Unit Cost + Additional Options</div></div>
-      <div><label>Driver Payout (S$)</label><input type="number" id="f_payout" step="any"><div class="small muted" id="payoutHint" style="margin-top:3px;display:none;">Suggested: Total Cost − Company Fund</div></div>
+      <div><label>Driver Payout (S$)</label><input type="number" id="f_payout" step="any"></div>
 
-      <div><label>Company Fund (S$)</label><input type="number" id="f_coyFund" step="any"><div class="small muted" id="coyFundHint" style="margin-top:3px;display:none;">Auto-set: Qty × S$10 for this driver</div></div>
+      <div><label>Company Fund (S$)</label><input type="number" id="f_coyFund" step="any" readonly style="background:#f5f6f8;"><div class="small muted" style="margin-top:3px;">Total Cost − Driver Payout</div></div>
       <div><label>Payment Status</label><select id="f_status"><option>UNPAID</option><option>PENDING</option><option>PAID</option></select></div>
 
       <div class="full"><label>Remarks</label><input type="text" id="f_remarks"></div>

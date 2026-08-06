@@ -971,14 +971,6 @@ document.getElementById('f_client').addEventListener('change', (e)=>{
   }
 });
 
-// For these drivers, Company Fund auto-calculates as $10 per billed unit (hour/trip/stop);
-// Driver Payout is always editable, pre-filled with a suggestion for these drivers only.
-const PAYOUT_DEDUCTION_PER_UNIT = 10;
-const SPECIAL_FUND_DRIVERS = new Set(['ALAN YONG','SEAN SEAH','ELVIN SAI']);
-function isSpecialFundDriver(name){
-  return SPECIAL_FUND_DRIVERS.has((name||'').trim().toUpperCase());
-}
-
 // Additional Options: a repeatable list where each row picks one of the
 // non-hourly, non-transfer Job Types (e.g. Additional Stop, Waiting Charge)
 // plus an amount, rolling into the job's Total Cost.
@@ -1014,36 +1006,18 @@ function addOptionRow(optionType, amount){
 }
 document.getElementById('addOptionBtn').addEventListener('click', ()=>addOptionRow('',''));
 
+// Company Fund is always derived: Total Cost − Driver Payout. Driver Payout is
+// the manually-entered field for every driver, in both workspaces.
 function recalc(){
   const qty = Number(document.getElementById('f_qty').value)||0;
   const unitCost = Number(document.getElementById('f_unitCost').value)||0;
   const cost = qty*unitCost + sumExtras();
   document.getElementById('f_cost').value = cost || '';
 
-  const driver = document.getElementById('f_driver').value;
-  const coyFundEl = document.getElementById('f_coyFund');
-  const payoutEl = document.getElementById('f_payout');
-  const coyFundHint = document.getElementById('coyFundHint');
-  const payoutHint = document.getElementById('payoutHint');
-
-  if(isSpecialFundDriver(driver)){
-    const coyFund = qty * PAYOUT_DEDUCTION_PER_UNIT;
-    coyFundEl.readOnly = true;
-    coyFundEl.style.background = '#f5f6f8';
-    coyFundEl.value = coyFund.toFixed(2);
-    coyFundHint.style.display = '';
-    const payout = Math.max(0, cost - coyFund);
-    payoutEl.value = cost ? payout.toFixed(2) : '';
-    payoutHint.style.display = '';
-  } else {
-    coyFundEl.readOnly = false;
-    coyFundEl.style.background = '#fff';
-    coyFundHint.style.display = 'none';
-    payoutHint.style.display = 'none';
-  }
+  const payout = Number(document.getElementById('f_payout').value)||0;
+  document.getElementById('f_coyFund').value = cost ? (cost - payout).toFixed(2) : '';
 }
-document.getElementById('f_driver').addEventListener('change', recalc);
-['f_qty','f_unitCost'].forEach(id=>document.getElementById(id).addEventListener('input', recalc));
+['f_qty','f_unitCost','f_payout'].forEach(id=>document.getElementById(id).addEventListener('input', recalc));
 
 // For HOURLY job types, derive Qty from Start/End time (billed in whole-hour blocks, rounded up)
 function isHourlyJobType(jt){
@@ -1146,12 +1120,6 @@ async function openJobModal(id){
   document.getElementById('f_unitCost').value = job?.unitCost ?? '';
   document.getElementById('f_cost').value = job?.cost ?? '';
   document.getElementById('f_payout').value = job?.driverPayout ?? '';
-  document.getElementById('f_coyFund').value = job?.coyFund ?? 0;
-  const isSpecial = isSpecialFundDriver(job?.driver);
-  document.getElementById('f_coyFund').readOnly = isSpecial;
-  document.getElementById('f_coyFund').style.background = isSpecial ? '#f5f6f8' : '#fff';
-  document.getElementById('coyFundHint').style.display = isSpecial ? '' : 'none';
-  document.getElementById('payoutHint').style.display = isSpecial ? '' : 'none';
   document.getElementById('f_status').value = (job?.paymentStatus || 'UNPAID').toUpperCase();
   document.getElementById('f_remarks').value = job?.remarks || '';
   toggleQtyHint();
@@ -1161,6 +1129,7 @@ async function openJobModal(id){
     const {data: options} = await sb.from(TBL.job_options).select('*').eq('job_id', id).order('id');
     (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount));
   }
+  recalc();
 
   document.getElementById('jobModalBg').classList.add('active');
 }
