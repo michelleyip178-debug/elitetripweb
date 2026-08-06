@@ -1058,7 +1058,7 @@ function addOptionRow(optionType, amount){
   const row = document.createElement('div');
   row.className = 'optionRow';
   row.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;';
-  row.innerHTML = `<select class="optionType" style="flex:2;"><option value="">— select option —</option>${ADDITIONAL_OPTIONS.map(o=>`<option value="${o.replace(/"/g,'&quot;')}">${o}</option>`).join('')}</select>
+  row.innerHTML = `<select class="optionType" style="flex:2;"><option value="">— select option —</option>${[...ADDITIONAL_OPTIONS].sort((a,b)=>a.localeCompare(b)).map(o=>`<option value="${o.replace(/"/g,'&quot;')}">${o}</option>`).join('')}</select>
     <input type="number" class="optionAmount" value="${amount ?? ''}" placeholder="Amount (S$)" step="any" style="flex:1;">
     <button type="button" class="btn secondary removeRowBtn" style="padding:6px 10px;flex:0 0 auto;">✕</button>`;
   row.querySelector('.optionType').value = optionType || '';
