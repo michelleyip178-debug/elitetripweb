@@ -610,11 +610,13 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
   lines.push(`PAX: ${pax||''}`);
   if(itinerary) lines.push(itinerary);
   lines.push(`DRIVER: ${driver}`);
-  if(startTime){
-    const s = startTime.replace(':',''), e = endTime ? endTime.replace(':','') : '';
-    lines.push(`TIME: ${s}${e?` - ${e}`:''}`);
-  } else {
-    lines.push('TIME: ');
+  if(isHourlyJobType(jobType)){
+    if(startTime){
+      const s = startTime.replace(':',''), e = endTime ? endTime.replace(':','') : '';
+      lines.push(`TIME: ${s}${e?` - ${e}`:''}`);
+    } else {
+      lines.push('TIME: ');
+    }
   }
 
   const update = {

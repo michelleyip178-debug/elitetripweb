@@ -684,7 +684,7 @@ function buildItemDescription(job){
     const plate = job.vehicle && !d ? job.vehicle : (d?.plate || '');
     lines.push(`DRIVER: ${job.driver}${plate?` (${plate})`:''}`);
   }
-  if(job.startTime){
+  if(job.startTime && isHourlyJobType(job.jobType)){
     const s = job.startTime.replace(':','');
     const e = job.endTime ? job.endTime.replace(':','') : '';
     lines.push(`TIME: ${s}${e?` - ${e}`:''}`);
@@ -1204,7 +1204,7 @@ document.getElementById('addJobBtn').addEventListener('click', ()=>openJobModal(
 document.getElementById('cancelJobBtn').addEventListener('click', closeJobModal);
 document.getElementById('jobModalBg').addEventListener('click', (e)=>{ if(e.target.id==='jobModalBg') closeJobModal(); });
 
-function buildTripDetails({hostName, uid, costCentre, pax, itinerary, driver, startTime, endTime}){
+function buildTripDetails({hostName, uid, costCentre, pax, itinerary, driver, startTime, endTime, jobType}){
   const lines = [];
   lines.push(`REQUESTOR: ${hostName||''}`);
   lines.push(`UID: ${uid||''}`);
@@ -1214,12 +1214,14 @@ function buildTripDetails({hostName, uid, costCentre, pax, itinerary, driver, st
   const d = DATA.drivers.find(x=>x.name===driver);
   const plate = d?.plate || '';
   lines.push(`DRIVER: ${driver||''}${plate?` (${plate})`:''}`);
-  if(startTime){
-    const s = startTime.replace(':','');
-    const e = endTime ? endTime.replace(':','') : '';
-    lines.push(`TIME: ${s}${e?` - ${e}`:''}`);
-  } else {
-    lines.push('TIME: ');
+  if(isHourlyJobType(jobType)){
+    if(startTime){
+      const s = startTime.replace(':','');
+      const e = endTime ? endTime.replace(':','') : '';
+      lines.push(`TIME: ${s}${e?` - ${e}`:''}`);
+    } else {
+      lines.push('TIME: ');
+    }
   }
   return lines.join('\n');
 }
@@ -1255,7 +1257,7 @@ document.getElementById('saveJobBtn').addEventListener('click', async ()=>{
     company: document.getElementById('f_company').value,
     costCentre: document.getElementById('f_costCentre').value,
     uid,
-    details: buildTripDetails({hostName, uid, costCentre: document.getElementById('f_costCentre').value, pax, itinerary, driver, startTime, endTime}),
+    details: buildTripDetails({hostName, uid, costCentre: document.getElementById('f_costCentre').value, pax, itinerary, driver, startTime, endTime, jobType: document.getElementById('f_jobType').value}),
     startTime,
     endTime,
     qty: Number(document.getElementById('f_qty').value)||0,
