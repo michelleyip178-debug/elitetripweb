@@ -1002,15 +1002,16 @@ document.getElementById('deleteRateBtn').addEventListener('click', async ()=>{
 
 // ---------- Modal / form ----------
 function fillSelect(sel, values, placeholder){
-  sel.innerHTML = (placeholder?`<option value="">${placeholder}</option>`:'') + values.map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('');
+  const sorted = [...values].sort((a,b)=>String(a).localeCompare(String(b)));
+  sel.innerHTML = (placeholder?`<option value="">${placeholder}</option>`:'') + sorted.map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('');
 }
 
 function setupModalOptions(currentDriverName){
   const driverNames = DATA.drivers.filter(d=>d.active !== false).map(d=>d.name);
   if(currentDriverName && !driverNames.includes(currentDriverName)) driverNames.push(currentDriverName);
-  fillSelect(document.getElementById('f_driver'), driverNames.sort(), '— select driver —');
+  fillSelect(document.getElementById('f_driver'), driverNames, '— select driver —');
   fillSelect(document.getElementById('f_jobType'), JOB_TYPES, '— select job type —');
-  fillSelect(document.getElementById('f_client'), DATA.clients.map(c=>c.hostName).sort(), '— select or leave blank —');
+  fillSelect(document.getElementById('f_client'), DATA.clients.map(c=>c.hostName), '— select or leave blank —');
 }
 
 document.getElementById('f_client').addEventListener('change', (e)=>{

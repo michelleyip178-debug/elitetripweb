@@ -247,7 +247,8 @@ function applyRateToUnitCost(){
 }
 
 function fillSelect(sel, values, placeholder){
-  sel.innerHTML = `<option value="">${placeholder}</option>` + values.map(v=>`<option value="${String(v).replace(/"/g,'&quot;')}">${v}</option>`).join('');
+  const sorted = [...values].sort((a,b)=>String(a).localeCompare(String(b)));
+  sel.innerHTML = `<option value="">${placeholder}</option>` + sorted.map(v=>`<option value="${String(v).replace(/"/g,'&quot;')}">${v}</option>`).join('');
 }
 // PAX stepper: tap +/- to adjust, 0 = unset ("—").
 const PAX_MAX = 20;
