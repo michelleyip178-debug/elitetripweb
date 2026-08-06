@@ -4,7 +4,7 @@
 // picked based on ?ws= in the URL. Same login works for both since it's one project.
 
 const WORKSPACE = (new URLSearchParams(location.search).get('ws') === 'nonmaersk') ? 'nonmaersk' : 'maersk';
-const WORKSPACE_LABEL = WORKSPACE === 'nonmaersk' ? 'Non-MAERSK' : 'MAERSK';
+const WORKSPACE_LABEL = WORKSPACE === 'nonmaersk' ? 'ELITE' : 'MAERSK';
 
 const SUPABASE_URL = 'https://ctdtmwoztughpagavrsp.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0ZHRtd296dHVnaHBhZ2F2cnNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1MzE3MDcsImV4cCI6MjEwMTEwNzcwN30.Rktv2pV1gE9LUi3Hr69C3YpaWBLvzwwI1jksl-7LwiY';

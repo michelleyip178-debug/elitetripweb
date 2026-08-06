@@ -39,7 +39,7 @@
 
 <script>
   const ws = (new URLSearchParams(location.search).get('ws') === 'nonmaersk') ? 'nonmaersk' : 'maersk';
-  const label = ws === 'nonmaersk' ? 'Non-MAERSK' : 'MAERSK';
+  const label = ws === 'nonmaersk' ? 'ELITE' : 'MAERSK';
   document.getElementById('workspaceTitle').textContent = `EliteSkyline — ${label}`;
   document.getElementById('cardList').innerHTML = `
     <a class="card primary" href="/log?ws=${ws}">
