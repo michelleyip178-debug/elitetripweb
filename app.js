@@ -958,7 +958,7 @@ function setupModalOptions(currentDriverName){
   const driverNames = DATA.drivers.filter(d=>d.active !== false).map(d=>d.name);
   if(currentDriverName && !driverNames.includes(currentDriverName)) driverNames.push(currentDriverName);
   fillSelect(document.getElementById('f_driver'), driverNames.sort(), '— select driver —');
-  fillSelect(document.getElementById('f_jobType'), DATA.jobTypes, '— select job type —');
+  fillSelect(document.getElementById('f_jobType'), JOB_TYPES, '— select job type —');
   fillSelect(document.getElementById('f_client'), DATA.clients.map(c=>c.hostName).sort(), '— select or leave blank —');
 }
 

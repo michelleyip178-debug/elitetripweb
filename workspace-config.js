@@ -21,6 +21,11 @@ const TBL = {
   job_options: 'job_options' + TABLE_SUFFIX,
 };
 
+// Same job types across both workspaces (the job_types DB table is unused/empty —
+// this hardcoded list is the real source of truth, shared by dashboard.html,
+// log.html, and update.html).
+const JOB_TYPES = ['ADDITIONAL CHARGE','ADDITIONAL STOP (LOCAL)','ADDITIONAL STOP (MALAYSIA)','ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)','ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)','ARRIVAL (DRIVE WAY PICK UP)','ARRIVAL (MEET & GREET)','CANCELLATION (100%)','CANCELLATION (25%)','CANCELLATION (50%)','DEPARTURE','DISPOSAL','HOURLY (LOCAL)','HOURLY (MALAYSIA)','MIDNIGHT SURCHARGE (LOCAL)','MIDNIGHT SURCHARGE (MALAYSIA)','MISCELLANEOUS','TOUR GUIDE (MIN 2)','TRANSFER (CROSS BORDER)(MINI VAN)','TRANSFER (CROSS BORDER)(MPV)','TRANSFER (CROSS BORDER)(SALOON)','TRANSFER (LOCAL)','TRANSFER (TUAS)','WAITING CHARGE (15 MINS/BLOCK)','WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)'];
+
 // Same job types across both workspaces, prices can differ per workspace.
 const MAERSK_RATE_MAP = {
   'ADDITIONAL STOP (LOCAL)': { flat: 30 },
