@@ -39,6 +39,10 @@
   .calGrid .empty{min-width:0;visibility:hidden;}
   .btn{width:100%;background:var(--accent);color:var(--accent-ink);border:none;padding:17px;border-radius:10px;font-size:17px;font-weight:700;cursor:pointer;margin-top:8px;}
   .btn.secondary{background:#eef1f6;color:var(--ink);}
+  .paxStepper{display:flex;align-items:center;gap:12px;}
+  .paxBtn{width:52px;height:52px;flex:0 0 auto;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-size:26px;font-weight:700;color:var(--accent);cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;}
+  .paxBtn:active{background:#eef1f6;}
+  .paxValue{flex:1;text-align:center;font-size:19px;font-weight:700;padding:14px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);}
   .btn:active{filter:brightness(0.92);}
   .btn:disabled{opacity:0.6;}
   .optionRow{display:flex;gap:8px;margin-bottom:8px;}
@@ -136,7 +140,11 @@
 
     <div class="field">
       <label>PAX</label>
-      <select id="f_pax"><option value="">— select —</option></select>
+      <div class="paxStepper">
+        <button type="button" class="paxBtn" id="f_pax_minus">−</button>
+        <div class="paxValue" id="f_pax_display">—</div>
+        <button type="button" class="paxBtn" id="f_pax_plus">+</button>
+      </div>
     </div>
 
     <div class="field">
@@ -237,15 +245,24 @@ function applyRateToUnitCost(){
     }
   }
 }
-const JOB_TYPES = ['ADDITIONAL CHARGE','ADDITIONAL STOP (LOCAL)','ADDITIONAL STOP (MALAYSIA)','ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)','ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)','ARRIVAL (DRIVE WAY PICK UP)','ARRIVAL (MEET & GREET)','CANCELLATION (100%)','CANCELLATION (25%)','CANCELLATION (50%)','DEPARTURE','DISPOSAL','HOURLY (LOCAL)','HOURLY (MALAYSIA)','MIDNIGHT SURCHARGE (LOCAL)','MIDNIGHT SURCHARGE (MALAYSIA)','MISCELLANEOUS','TOUR GUIDE (MIN 2)','TRANSFER (CROSS BORDER)(MINI VAN)','TRANSFER (CROSS BORDER)(MPV)','TRANSFER (CROSS BORDER)(SALOON)','TRANSFER (LOCAL)','TRANSFER (TUAS)','WAITING CHARGE (15 MINS/BLOCK)','WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)'];
 
 function fillSelect(sel, values, placeholder){
   sel.innerHTML = `<option value="">${placeholder}</option>` + values.map(v=>`<option value="${String(v).replace(/"/g,'&quot;')}">${v}</option>`).join('');
 }
-function loadPax(sel){
-  const opts = []; for(let i=1;i<=20;i++) opts.push(`${i} PAX`);
-  fillSelect(sel, opts, '— select —');
+// PAX stepper: tap +/- to adjust, 0 = unset ("—").
+const PAX_MAX = 20;
+let paxValue = 0;
+function updatePaxDisplay(){
+  document.getElementById('f_pax_display').textContent = paxValue > 0 ? `${paxValue} PAX` : '—';
 }
+function getPax(){ return paxValue > 0 ? `${paxValue} PAX` : ''; }
+function setPax(value){
+  const m = (value||'').match(/(\d+)/);
+  paxValue = m ? Math.max(0, Math.min(PAX_MAX, parseInt(m[1],10))) : 0;
+  updatePaxDisplay();
+}
+document.getElementById('f_pax_minus').addEventListener('click', ()=>{ paxValue = Math.max(0, paxValue-1); updatePaxDisplay(); });
+document.getElementById('f_pax_plus').addEventListener('click', ()=>{ paxValue = Math.min(PAX_MAX, paxValue+1); updatePaxDisplay(); });
 // Separate Hour / Minute selects, combined into one HH:MM value — 24h, no AM/PM.
 function loadHourSelect(sel){
   const opts = []; for(let h=0;h<24;h++) opts.push(String(h).padStart(2,'0'));
@@ -403,7 +420,7 @@ function findClientByHost(hostName){
 loadDrivers();
 loadHosts();
 fillSelect(document.getElementById('f_jobType'), JOB_TYPES, '— select job type —');
-loadPax(document.getElementById('f_pax'));
+setPax('');
 loadHourSelect(document.getElementById('f_start_h'));
 loadMinuteSelect(document.getElementById('f_start_m'));
 loadHourSelect(document.getElementById('f_end_h'));
@@ -499,7 +516,7 @@ async function openEdit(id){
   refreshVehicleField(job.jobType, job.vehicle);
   setUnitCostHint(!!getRateMapping(job.jobType));
   document.getElementById('f_host').value = job.hostName ? job.hostName.trim() : '';
-  document.getElementById('f_pax').value = extractPax(job.details) || '';
+  setPax(extractPax(job.details) || '');
   document.getElementById('f_itinerary').value = extractRoute(job.details);
   setTime('f_start', job.startTime);
   setTime('f_end', job.endTime);
@@ -557,7 +574,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
   const date = getDate('f_date');
   const jobType = document.getElementById('f_jobType').value;
   const hostName = document.getElementById('f_host').value;
-  const pax = document.getElementById('f_pax').value;
+  const pax = getPax();
   const itinerary = document.getElementById('f_itinerary').value;
   const startTime = getTime('f_start');
   const endTime = getTime('f_end');
