@@ -295,7 +295,7 @@ function renderDashboard(){
 
   const byStatus = {};
   jobs.forEach(j=>{
-    const s = j.paymentStatus || 'Unpaid';
+    const s = (j.paymentStatus || 'UNPAID').toUpperCase();
     byStatus[s] = byStatus[s] || {jobs:0,sales:0};
     byStatus[s].jobs++;
     byStatus[s].sales += Number(j.cost)||0;
@@ -364,6 +364,8 @@ const JOBS_SORT_ACCESSORS = {
   invoice: j=>j.invoice||'',
   driver: j=>j.driver||'',
   jobType: j=>j.jobType||'',
+  startTime: j=>j.startTime||'',
+  endTime: j=>j.endTime||'',
   hostName: j=>j.hostName||'',
   cost: j=>(Number(j.qty)||0)*(Number(j.unitCost)||0),
   driverPayout: j=>Number(j.driverPayout)||0,
@@ -430,12 +432,14 @@ function renderJobs(){
       <td>${j.invoice||''}</td>
       <td>${j.driver||''}</td>
       <td>${j.jobType||''}</td>
+      <td>${j.startTime||''}</td>
+      <td>${j.endTime||''}</td>
       <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
       <td class="num">${fmtMoney(j.coyFund)}</td>
-      <td><span class="pill ${statusClass(j.paymentStatus)}">${j.paymentStatus||'Unpaid'}</span></td>
+      <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>
     ${optionsByJob(j.id).map(o=>`
@@ -444,15 +448,17 @@ function renderJobs(){
       <td>${j.invoice||''}</td>
       <td>${j.driver||''}</td>
       <td>${o.optionType||''}</td>
+      <td>${j.startTime||''}</td>
+      <td>${j.endTime||''}</td>
       <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
       <td class="num">${fmtMoney(j.coyFund)}</td>
-      <td><span class="pill ${statusClass(j.paymentStatus)}">${j.paymentStatus||'Unpaid'}</span></td>
+      <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>`).join('')}
-  `).join('') : `<tr><td colspan="11" class="empty">No jobs match these filters</td></tr>`;
+  `).join('') : `<tr><td colspan="13" class="empty">No jobs match these filters</td></tr>`;
   renderPagination('jobsPagination', 'jobs', page, totalPages, renderJobs);
 }
 
@@ -541,7 +547,7 @@ function renderInvoices(){
       <td class="num">${j.qty ?? ''}</td>
       <td class="num">${fmtMoney(j.unitCost)}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
-      <td><span class="pill ${statusClass(j.paymentStatus)}">${j.paymentStatus||'Unpaid'}</span></td>
+      <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>
     ${optionsByJob(j.id).map(o=>`
@@ -556,7 +562,7 @@ function renderInvoices(){
       <td class="num">1</td>
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
-      <td><span class="pill ${statusClass(j.paymentStatus)}">${j.paymentStatus||'Unpaid'}</span></td>
+      <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>`).join('')}`;
   }).join('') : `<tr><td colspan="12" class="empty">No records found</td></tr>`;
@@ -1146,7 +1152,7 @@ async function openJobModal(id){
   document.getElementById('f_coyFund').style.background = isSpecial ? '#f5f6f8' : '#fff';
   document.getElementById('coyFundHint').style.display = isSpecial ? '' : 'none';
   document.getElementById('payoutHint').style.display = isSpecial ? '' : 'none';
-  document.getElementById('f_status').value = job?.paymentStatus || 'Unpaid';
+  document.getElementById('f_status').value = (job?.paymentStatus || 'UNPAID').toUpperCase();
   document.getElementById('f_remarks').value = job?.remarks || '';
   toggleQtyHint();
 
@@ -1341,7 +1347,7 @@ function renderMaerskSummary(){
       <td class="num">${fmtMoney(j.cost)}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
       <td class="num">${fmtMoney(j.coyFund)}</td>
-      <td><span class="pill ${statusClass(j.paymentStatus)}">${j.paymentStatus||'Unpaid'}</span></td>
+      <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
     </tr>`).join('') : `<tr><td colspan="14" class="empty">No MAERSK SINGAPORE PTE LTD jobs found</td></tr>`;
   renderPagination('maerskPagination', 'maersk', page, totalPages, renderMaerskSummary);
 }
