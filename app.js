@@ -1025,9 +1025,15 @@ document.getElementById('f_client').addEventListener('change', (e)=>{
 // Additional Options: a repeatable list where each row picks one of the
 // non-hourly, non-transfer Job Types (e.g. Additional Stop, Waiting Charge)
 // plus an amount, rolling into the job's Total Cost.
-const ADDITIONAL_OPTIONS = ['ADDITIONAL CHARGE','ADDITIONAL STOP (LOCAL)','ADDITIONAL STOP (MALAYSIA)','ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)','ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)','ARRIVAL (DRIVE WAY PICK UP)','ARRIVAL (MEET & GREET)','CANCELLATION (100%)','CANCELLATION (25%)','CANCELLATION (50%)','DEPARTURE','MIDNIGHT SURCHARGE (LOCAL)','MIDNIGHT SURCHARGE (MALAYSIA)','MISCELLANEOUS','TOUR GUIDE (MIN 2)','WAITING CHARGE (15 MINS/BLOCK)','WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)'];
+const ADDITIONAL_OPTIONS = ['ADDITIONAL CHARGE','ADDITIONAL STOP (LOCAL)','ADDITIONAL STOP (MALAYSIA)','ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)','ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)','ARRIVAL (DRIVE WAY PICK UP)','ARRIVAL (MEET & GREET)','CANCELLATION (100%)','CANCELLATION (25%)','CANCELLATION (50%)','DEPARTURE','MIDNIGHT SURCHARGE (LOCAL)','MIDNIGHT SURCHARGE (MALAYSIA)','MISCELLANEOUS','TOUR GUIDE (MIN 2)','WAITING CHARGE (15 MINS/BLOCK)','WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)','CREDIT CARD CHARGES'];
 function sumExtras(){
   return [...document.querySelectorAll('#optionsList .optionAmount')].reduce((s,el)=>s+(Number(el.value)||0),0);
+}
+function sumExtrasExcluding(row){
+  const own = row.querySelector('.optionAmount');
+  return [...document.querySelectorAll('#optionsList .optionAmount')]
+    .filter(el=>el!==own)
+    .reduce((s,el)=>s+(Number(el.value)||0),0);
 }
 function applyOptionRate(row){
   const optionType = row.querySelector('.optionType').value;
@@ -1038,6 +1044,11 @@ function applyOptionRate(row){
   } else if(map.byVehicle){
     const vehicle = document.getElementById('f_vehicle').value;
     if(vehicle && map.byVehicle[vehicle] != null) row.querySelector('.optionAmount').value = map.byVehicle[vehicle];
+  } else if(map.percentOfCost != null){
+    const qty = Number(document.getElementById('f_qty').value)||0;
+    const unitCost = Number(document.getElementById('f_unitCost').value)||0;
+    const baseCost = qty*unitCost + sumExtrasExcluding(row);
+    row.querySelector('.optionAmount').value = (baseCost * map.percentOfCost/100).toFixed(2);
   }
   recalc();
 }
