@@ -139,6 +139,11 @@
     </div>
 
     <div class="field">
+      <label>Cost Centre</label>
+      <input type="text" id="f_costCentre">
+    </div>
+
+    <div class="field">
       <label>PAX</label>
       <div class="paxStepper">
         <button type="button" class="paxBtn" id="f_pax_minus">−</button>
@@ -367,10 +372,6 @@ function extractUid(text){
   const m = (text||'').match(/^\s*UID\s*:\s*(.*)$/im);
   return m ? m[1].trim() : '';
 }
-function extractCostCentre(text){
-  const m = (text||'').match(/^\s*COST CENTRE\s*:\s*(.*)$/im);
-  return m ? m[1].trim() : '';
-}
 
 const ADDITIONAL_OPTIONS = ['ADDITIONAL CHARGE','ADDITIONAL STOP (LOCAL)','ADDITIONAL STOP (MALAYSIA)','ADDITIONAL STOP (WITHIN 3KM)(23/45 SEATER)','ADDITIONAL STOP (WITHIN 3KM)(SALOON/MPV/COMBI)','ARRIVAL (DRIVE WAY PICK UP)','ARRIVAL (MEET & GREET)','CANCELLATION (100%)','CANCELLATION (25%)','CANCELLATION (50%)','DEPARTURE','MIDNIGHT SURCHARGE (LOCAL)','MIDNIGHT SURCHARGE (MALAYSIA)','MISCELLANEOUS','TOUR GUIDE (MIN 2)','WAITING CHARGE (15 MINS/BLOCK)','WAITING CHARGE (15 MINS/BLOCK) (MALAYSIA)','CREDIT CARD CHARGES'];
 function sumExtras(){
@@ -428,6 +429,10 @@ async function loadHosts(){
 function findClientByHost(hostName){
   return ALL_CLIENTS.find(c=>(c.hostName||'').trim()===(hostName||'').trim());
 }
+document.getElementById('f_host').addEventListener('change', (e)=>{
+  const c = findClientByHost(e.target.value);
+  document.getElementById('f_costCentre').value = c?.costCentre || '';
+});
 
 loadDrivers();
 loadHosts();
@@ -450,7 +455,7 @@ function wireUppercase(el){
     if(start !== null) el.setSelectionRange(start, end);
   });
 }
-['f_itinerary','f_remarks'].forEach(id=>wireUppercase(document.getElementById(id)));
+['f_itinerary','f_remarks','f_costCentre'].forEach(id=>wireUppercase(document.getElementById(id)));
 
 function showMsg(text, type){
   const el = document.getElementById('msg');
@@ -528,6 +533,7 @@ async function openEdit(id){
   refreshVehicleField(job.jobType, job.vehicle);
   setUnitCostHint(!!getRateMapping(job.jobType));
   document.getElementById('f_host').value = job.hostName ? job.hostName.trim() : '';
+  document.getElementById('f_costCentre').value = job.costCentre || '';
   setPax(extractPax(job.details) || '');
   document.getElementById('f_itinerary').value = extractRoute(job.details);
   setTime('f_start', job.startTime);
@@ -600,7 +606,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
 
   const client = findClientByHost(hostName);
   const uid = client ? (client.uid || '') : extractUid(original.details);
-  const costCentre = client ? (client.costCentre || '') : extractCostCentre(original.details);
+  const costCentre = document.getElementById('f_costCentre').value;
   const company = client ? (client.company || '') : (original.company || '');
 
   const lines = [];

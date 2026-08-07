@@ -105,6 +105,11 @@
   </div>
 
   <div class="field">
+    <label>Cost Centre</label>
+    <input type="text" id="f_costCentre">
+  </div>
+
+  <div class="field">
     <label>PAX</label>
     <div class="paxStepper">
       <button type="button" class="paxBtn" id="f_pax_minus">−</button>
@@ -248,6 +253,10 @@ async function loadHosts(){
 function findClientByHost(hostName){
   return ALL_CLIENTS.find(c=>(c.hostName||'').trim()===(hostName||'').trim());
 }
+document.getElementById('f_host').addEventListener('change', (e)=>{
+  const c = findClientByHost(e.target.value);
+  document.getElementById('f_costCentre').value = c?.costCentre || '';
+});
 
 // PAX stepper: tap +/- to adjust, 0 = unset ("—").
 const PAX_MAX = 20;
@@ -378,7 +387,7 @@ function wireUppercase(el){
     if(start !== null) el.setSelectionRange(start, end);
   });
 }
-['f_itinerary','f_remarks'].forEach(id=>wireUppercase(document.getElementById(id)));
+['f_itinerary','f_remarks','f_costCentre'].forEach(id=>wireUppercase(document.getElementById(id)));
 
 document.getElementById('f_jobType').addEventListener('change', ()=>{
   refreshVehicleField(document.getElementById('f_jobType').value);
@@ -485,7 +494,7 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
 
   const client = findClientByHost(hostName);
   const uid = client?.uid || '';
-  const costCentre = client?.costCentre || '';
+  const costCentre = document.getElementById('f_costCentre').value;
   const company = client?.company || '';
 
   const lines = [];
@@ -542,7 +551,7 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
   showMsg('Trip submitted! Thank you.', 'success');
   document.getElementById('optionsList').innerHTML = '';
   setPax('');
-  ['f_host','f_itinerary','f_start_h','f_start_m','f_end_h','f_end_m','f_remarks'].forEach(id=>document.getElementById(id).value='');
+  ['f_host','f_costCentre','f_itinerary','f_start_h','f_start_m','f_end_h','f_end_m','f_remarks'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f_jobType').value = '';
   document.getElementById('f_unitCost').value = '';
   document.getElementById('f_qty').value = 1;
