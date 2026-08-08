@@ -161,13 +161,13 @@ async function init(){
     <div class="invoice-doc">
       <div class="invoice-head">
         <div>
-          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${escHtml(COMPANY_LETTERHEAD.name)}</div>
+          <div class="name">${escHtml(COMPANY_LETTERHEAD.name)}</div>
           <div class="invoice-from">${escHtml(letterheadLines.join('\n'))}</div>
         </div>
-        <img src="${COMPANY_LETTERHEAD.logoUrl||''}" alt="" onerror="this.style.display='none'">
+        <img class="invoice-logo" src="${COMPANY_LETTERHEAD.logoUrl||''}" alt="" onerror="this.style.display='none'">
       </div>
-      <h2 style="margin:0 0 16px;font-size:20px;letter-spacing:.03em;">INVOICE</h2>
-      <div class="invoice-head" style="margin-bottom:20px;">
+      <h1 class="invoice-title">INVOICE</h1>
+      <div class="invoice-billmeta">
         <div class="invoice-billto">
           <div class="label">Bill To</div>
           <div>${escHtml(billToLines.filter(Boolean).join('\n'))}</div>
