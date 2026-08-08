@@ -1240,7 +1240,8 @@ const MAERSK_SUMMARY_COMPANY = 'MAERSK SINGAPORE PTE LTD';
 let maerskFiltersDefaulted = false;
 
 function getMaerskJobs(){
-  return DATA.jobs.filter(j=>(j.company||'').trim().toUpperCase() === MAERSK_SUMMARY_COMPANY);
+  return DATA.jobs.filter(j=>(j.company||'').trim().toUpperCase() === MAERSK_SUMMARY_COMPANY
+    && (j.costCentre||'').trim().toUpperCase().startsWith('SG51'));
 }
 
 function populateMaerskFilterOptions(){
@@ -1299,10 +1300,7 @@ function renderMaerskSummary(){
       <td class="num">${j.qty ?? ''}</td>
       <td class="num">${fmtMoney(j.unitCost)}</td>
       <td class="num">${fmtMoney(j.cost)}</td>
-      <td class="num">${fmtMoney(j.driverPayout)}</td>
-      <td class="num">${fmtMoney(j.coyFund)}</td>
-      <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
-    </tr>`).join('') : `<tr><td colspan="14" class="empty">No MAERSK SINGAPORE PTE LTD jobs found</td></tr>`;
+    </tr>`).join('') : `<tr><td colspan="11" class="empty">No MAERSK SINGAPORE PTE LTD jobs found</td></tr>`;
   renderPagination('maerskPagination', 'maersk', page, totalPages, renderMaerskSummary);
 }
 document.getElementById('fMaerskYear').addEventListener('change', ()=>{ pageState.maersk=1; renderMaerskSummary(); });
