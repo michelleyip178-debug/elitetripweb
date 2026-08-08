@@ -114,6 +114,7 @@
       <span class="small muted" id="invCount"></span>
       <button class="btn secondary" id="invoicesClearSortBtn">Clear Sort</button>
       <button class="btn secondary" id="autoAssignBtn">Auto-Assign Invoice #s</button>
+      <button class="btn secondary" id="generateInvoiceBtn">Generate Invoice</button>
       <button class="btn" id="exportInvoicesBtn">Export to QuickBooks (0)</button>
     </div>
     <div class="panel" style="overflow:auto;max-height:75vh;">
@@ -309,6 +310,8 @@
       <div><label>Cost Centre</label><input type="text" id="c_costCentre"></div>
       <div><label>Company</label><input type="text" id="c_company"></div>
       <div><label>Code</label><input type="text" id="c_code"></div>
+      <div class="full"><label>Billing Address</label><textarea id="c_billingAddress" rows="2" placeholder="Registered address for invoicing"></textarea></div>
+      <div><label>UEN</label><input type="text" id="c_uen"></div>
     </div>
     <div class="form-actions">
       <button class="btn danger" id="deleteClientBtn" style="display:none;margin-right:auto;">Delete</button>

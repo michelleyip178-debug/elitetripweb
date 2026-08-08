@@ -735,6 +735,11 @@ function buildQuickbooksCSV(invoiceSet){
   });
   return rows.map(r=>r.map(csvField).join(',')).join('\n');
 }
+document.getElementById('generateInvoiceBtn').addEventListener('click', ()=>{
+  if(selectedInvoices.size===0){ alert('Select at least one invoice to generate.'); return; }
+  const params = new URLSearchParams({ ws: WORKSPACE, inv: [...selectedInvoices].join(',') });
+  window.open(`invoice.html?${params}`, '_blank');
+});
 document.getElementById('exportInvoicesBtn').addEventListener('click', ()=>{
   if(selectedInvoices.size===0){ alert('Select at least one invoice to export.'); return; }
   const csv = buildQuickbooksCSV(selectedInvoices);
@@ -894,6 +899,8 @@ function openClientModal(id){
   document.getElementById('c_costCentre').value = c?.costCentre || '';
   document.getElementById('c_company').value = c?.company || '';
   document.getElementById('c_code').value = c?.code || '';
+  document.getElementById('c_billingAddress').value = c?.billingAddress || '';
+  document.getElementById('c_uen').value = c?.uen || '';
   document.getElementById('clientModalBg').classList.add('active');
 }
 function closeClientModal(){
@@ -911,6 +918,8 @@ document.getElementById('saveClientBtn').addEventListener('click', async ()=>{
     costCentre: document.getElementById('c_costCentre').value.trim(),
     company: document.getElementById('c_company').value.trim(),
     code: document.getElementById('c_code').value.trim(),
+    billingAddress: document.getElementById('c_billingAddress').value.trim(),
+    uen: document.getElementById('c_uen').value.trim(),
   };
   if(!client.hostName){ alert('Please enter a host name.'); return; }
   if(editingClientId){
