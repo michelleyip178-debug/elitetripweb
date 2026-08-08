@@ -14,7 +14,8 @@
   main{flex:1;padding:20px;max-width:480px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:16px;}
   a.card{display:flex;align-items:center;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;text-decoration:none;color:var(--ink);box-shadow:0 1px 2px rgba(20,24,34,.04);}
   a.card:active{filter:brightness(0.97);}
-  a.card .icon{font-size:28px;flex:0 0 auto;width:50px;height:50px;border-radius:12px;background:#eef1f9;display:flex;align-items:center;justify-content:center;}
+  a.card .icon{font-size:28px;flex:0 0 auto;width:50px;height:50px;border-radius:12px;background:#eef1f9;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  a.card .icon img{width:100%;height:100%;object-fit:contain;}
   a.card .text h2{font-size:17px;margin:0 0 3px;font-weight:700;}
   a.card .text p{font-size:13px;color:var(--muted);margin:0;}
   a.card.primary{background:var(--accent);border-color:var(--accent);}
@@ -33,7 +34,7 @@
 
 <main>
   <a class="card primary" href="/workspace?ws=maersk">
-    <div class="icon">🚢</div>
+    <div class="icon"><img src="assets/maersk-logo.png" alt="MAERSK"></div>
     <div class="text">
       <h2>MAERSK</h2>
       <p>Log, update, and view MAERSK job data</p>
@@ -41,7 +42,7 @@
   </a>
 
   <a class="card" href="/workspace?ws=nonmaersk">
-    <div class="icon">🚙</div>
+    <div class="icon"><img src="assets/logo.png" alt="ELITE"></div>
     <div class="text">
       <h2>ELITE</h2>
       <p>Log, update, and view all other job data</p>
