@@ -171,9 +171,11 @@ async function init(){
           <div>${escHtml(billToLines.filter(Boolean).join('\n'))}</div>
         </div>
         <div class="invoice-meta">
-          <div class="mlabel">INVOICE</div><div class="mval">${escHtml(inv)}</div>
-          <div class="mlabel">DATE</div><div class="mval">${escHtml(invDate ? toDMY(invDate) : '')}</div>
-          <div class="mlabel">DUE DATE</div><div class="mval">${escHtml(dueDateDMY)}</div>
+          <table>
+            <tr><td class="mlabel">INVOICE</td><td class="mval">${escHtml(inv)}</td></tr>
+            <tr><td class="mlabel">DATE</td><td class="mval">${escHtml(invDate ? toDMY(invDate) : '')}</td></tr>
+            <tr><td class="mlabel">DUE DATE</td><td class="mval">${escHtml(dueDateDMY)}</td></tr>
+          </table>
         </div>
       </div>
       <table>
