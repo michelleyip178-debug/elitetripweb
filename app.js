@@ -469,9 +469,6 @@ document.getElementById('fSearch').addEventListener('input', ()=>{ pageState.job
 
 // ---------- Invoices ----------
 const selectedInvoices = new Set();
-function updateExportCount(){
-  document.getElementById('exportInvoicesBtn').textContent = `Export to QuickBooks (${selectedInvoices.size})`;
-}
 
 let invoiceFiltersDefaulted = false;
 function populateInvoiceFilterOptions(){
@@ -571,7 +568,6 @@ function renderInvoices(){
   renderPagination('invoicesPagination', 'invoices', page, totalPages, renderInvoices);
   const checkable = [...document.querySelectorAll('.inv-check')];
   document.getElementById('invSelectAll').checked = checkable.length>0 && checkable.every(c=>c.checked);
-  updateExportCount();
 }
 document.getElementById('fInvSearch').addEventListener('input', ()=>{ pageState.invoices=1; renderInvoices(); });
 document.getElementById('fInvDate').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
@@ -584,7 +580,6 @@ document.querySelector('#invoicesTable tbody').addEventListener('change', e=>{
     if(e.target.checked) selectedInvoices.add(inv); else selectedInvoices.delete(inv);
     // Sync other rows sharing the same invoice # on this page.
     document.querySelectorAll(`.inv-check[data-inv="${e.target.dataset.inv}"]`).forEach(c=>c.checked = e.target.checked);
-    updateExportCount();
     document.getElementById('invSelectAll').checked = [...document.querySelectorAll('.inv-check')].every(c=>c.checked);
   }
 });
@@ -594,7 +589,6 @@ document.getElementById('invSelectAll').addEventListener('change', e=>{
     c.checked = e.target.checked;
     if(e.target.checked) selectedInvoices.add(inv); else selectedInvoices.delete(inv);
   });
-  updateExportCount();
 });
 
 // ---------- Auto-assign invoice numbers ----------
@@ -649,19 +643,6 @@ async function autoAssignInvoiceNumbers(){
 }
 document.getElementById('autoAssignBtn').addEventListener('click', autoAssignInvoiceNumbers);
 
-// ---------- QuickBooks CSV export ----------
-const QB_MONTH_NAMES = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
-function pad2(n){ return String(n).padStart(2,'0'); }
-function toMDY(dateStr){
-  if(!dateStr) return '';
-  const [y,m,d] = dateStr.split('-');
-  return `${m}/${d}/${y}`;
-}
-function addDaysMDY(dateStr, days){
-  const d = new Date(dateStr+'T00:00:00');
-  d.setDate(d.getDate()+days);
-  return `${pad2(d.getMonth()+1)}/${pad2(d.getDate())}/${d.getFullYear()}`;
-}
 function extractRoute(text){
   if(!text) return '';
   return text.split('\n').filter(l=>!/^\s*(REQUESTOR|UID|COST CENTRE|DRIVER|PAX|TIME)\s*:/i.test(l)).join('\n').trim();
@@ -670,85 +651,15 @@ function extractPax(text){
   const m = (text||'').match(/^\s*PAX\s*:\s*(.+)$/im);
   return m ? m[1].trim() : null;
 }
-function buildItemDescription(job){
-  const lines = [];
-  if(job.hostName) lines.push(`REQUESTOR: ${job.hostName}`);
-  if(job.uid) lines.push(`UID: ${job.uid}`);
-  if(job.costCentre) lines.push(`COST CENTRE: ${job.costCentre}`);
-  const route = extractRoute(job.details);
-  if(route) lines.push(route);
-  const pax = extractPax(job.details);
-  if(pax) lines.push(`PAX: ${pax}`);
-  if(job.driver){
-    const d = DATA.drivers.find(x=>x.name===job.driver);
-    const plate = job.vehicle && !d ? job.vehicle : (d?.plate || '');
-    lines.push(`DRIVER: ${job.driver}${plate?` (${plate})`:''}`);
-  }
-  if(job.startTime && isHourlyJobType(job.jobType)){
-    const s = job.startTime.replace(':','');
-    const e = job.endTime ? job.endTime.replace(':','') : '';
-    lines.push(`TIME: ${s}${e?` - ${e}`:''}`);
-  }
-  return lines.join('\n');
-}
 function csvField(v){
   v = v==null ? '' : String(v);
   if(/[",\n]/.test(v)) return '"'+v.replace(/"/g,'""')+'"';
   return v;
 }
-function buildQuickbooksCSV(invoiceSet){
-  const HEADER = ['*InvoiceNo','*Customer','*InvoiceDate','*DueDate','Terms','Location','Memo','Item(Product/Service)','ItemDescription','ItemQuantity','ItemRate','*ItemAmount','*ItemTaxCode','ItemTaxAmount','Service Date'];
-  const rows = [HEADER];
-  const invNums = [...invoiceSet].filter(inv=>inv!=='(no invoice #)').sort();
-  invNums.forEach(inv=>{
-    const jobs = DATA.jobs.filter(j=>j.invoice===inv).slice().sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
-    if(!jobs.length) return;
-    const company = jobs[0].company || '';
-    const dates = jobs.map(j=>j.date).filter(Boolean);
-    const invDate = dates.length ? dates.reduce((a,b)=>a<b?a:b) : '';
-    const invDateFmt = toMDY(invDate);
-    const dueDateFmt = invDate ? addDaysMDY(invDate,30) : '';
-    let memo = '';
-    if(invDate){
-      const [y,m] = invDate.split('-');
-      memo = `MAERSK TRANSPORT — ${QB_MONTH_NAMES[Number(m)-1]} ${y}`;
-    }
-    jobs.forEach((j,idx)=>{
-      rows.push([
-        inv,
-        idx===0?company:'',
-        idx===0?invDateFmt:'',
-        idx===0?dueDateFmt:'',
-        idx===0?'NET 30':'',
-        '',
-        idx===0?memo:'',
-        'TRANSPORT SERVICE',
-        buildItemDescription(j),
-        j.qty ?? '',
-        Number(j.unitCost||0).toFixed(2),
-        Number(j.cost||0).toFixed(2),
-        '0% OS',
-        '0',
-        toMDY(j.date)
-      ]);
-    });
-  });
-  return rows.map(r=>r.map(csvField).join(',')).join('\n');
-}
 document.getElementById('generateInvoiceBtn').addEventListener('click', ()=>{
   if(selectedInvoices.size===0){ alert('Select at least one invoice to generate.'); return; }
   const params = new URLSearchParams({ ws: WORKSPACE, inv: [...selectedInvoices].join(',') });
   window.open(`invoice.html?${params}`, '_blank');
-});
-document.getElementById('exportInvoicesBtn').addEventListener('click', ()=>{
-  if(selectedInvoices.size===0){ alert('Select at least one invoice to export.'); return; }
-  const csv = buildQuickbooksCSV(selectedInvoices);
-  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  const stamp = new Date().toISOString().slice(0,10);
-  a.download = `QB_Invoice_Import_${stamp}.csv`;
-  a.click();
 });
 
 // ---------- Drivers ----------

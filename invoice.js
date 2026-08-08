@@ -172,8 +172,8 @@ async function init(){
         </div>
         <div class="invoice-meta">
           <div>INVOICE <b>${escHtml(inv)}</b></div>
-          <div>DATE <b>${invDate ? toDMY(invDate) : ''}</b></div>
-          <div>DUE DATE <b>${dueDateDMY}</b></div>
+          <div>DATE <input type="text" class="invoice-date-input" value="${escHtml(invDate ? toDMY(invDate) : '')}"></div>
+          <div>DUE DATE <input type="text" class="invoice-date-input" value="${escHtml(dueDateDMY)}"></div>
         </div>
       </div>
       <table>
