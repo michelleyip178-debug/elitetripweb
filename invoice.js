@@ -145,8 +145,6 @@ async function init(){
 
     const billToLines = [company];
     if(client?.billingAddress) billToLines.push(client.billingAddress);
-    if(invJobs[0].hostName) billToLines.push(`Attn: ${invJobs[0].hostName}`);
-    if(invJobs[0].costCentre) billToLines.push(`Cost Centre: ${invJobs[0].costCentre}`);
     if(client?.uen) billToLines.push(`UEN: ${client.uen}`);
 
     const letterheadLines = [
