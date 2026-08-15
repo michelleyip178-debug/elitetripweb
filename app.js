@@ -484,8 +484,8 @@ function renderJobs(_skipFit){
       <td>${j.invoice||''}</td>
       <td class="driver-cell">${j.driver||''}</td>
       <td class="jobtype-cell">${j.jobType||''}</td>
-      <td>${j.startTime||''}</td>
-      <td>${j.endTime||''}</td>
+      <td class="time-col">${j.startTime||''}</td>
+      <td class="time-col">${j.endTime||''}</td>
       <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
@@ -501,8 +501,8 @@ function renderJobs(_skipFit){
       <td>${j.invoice||''}</td>
       <td class="driver-cell">${j.driver||''}</td>
       <td class="jobtype-cell">${fmtOptionLabel(o)}</td>
-      <td>${j.startTime||''}</td>
-      <td>${j.endTime||''}</td>
+      <td class="time-col">${j.startTime||''}</td>
+      <td class="time-col">${j.endTime||''}</td>
       <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
