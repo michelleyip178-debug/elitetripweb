@@ -99,12 +99,12 @@
     <select id="f_driver"><option value="">— select driver —</option></select>
   </div>
 
-  <div class="field">
+  <div class="field" id="hostFieldWrap">
     <label>Requestor / Host Name</label>
     <select id="f_host"><option value="">— select or leave blank —</option></select>
   </div>
 
-  <div class="field">
+  <div class="field" id="costCentreFieldWrap">
     <label>Cost Centre</label>
     <input type="text" id="f_costCentre">
   </div>
@@ -183,6 +183,14 @@
 // MAERSK vs Non-MAERSK based on ?ws= in the URL (same project, separate tables).
 document.title = document.title.replace('EliteSkyline', `EliteSkyline (${WORKSPACE_LABEL})`);
 document.querySelector('header .sub').textContent = `Quick entry for drivers · ${WORKSPACE_LABEL}`;
+
+// ELITE jobs don't need Host Name / Cost Centre on the quick-entry form.
+if(WORKSPACE === 'nonmaersk'){
+  ['hostFieldWrap','costCentreFieldWrap'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
+}
 
 function getRateMapping(jobType){
   return RATE_MAP[(jobType||'').trim()] || null;

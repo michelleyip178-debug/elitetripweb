@@ -5,6 +5,14 @@ document.title = document.title.replace('EliteSkyline', `EliteSkyline (${WORKSPA
 document.querySelector('header h1').textContent = `EliteSkyline — Job Log (${WORKSPACE_LABEL})`;
 document.querySelector('.login-box .sub').textContent = `Sign in to access the ${WORKSPACE_LABEL} Job Log`;
 
+// ELITE jobs don't need Host Name / Company / UID / Cost Centre on the job form.
+if(WORKSPACE === 'nonmaersk'){
+  ['clientFieldWrap','companyFieldWrap','uidFieldWrap','costCentreFieldWrap'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
+}
+
 // ---------- Auth ----------
 const loginOverlay = document.getElementById('loginOverlay');
 const loginBtn = document.getElementById('loginBtn');
