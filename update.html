@@ -222,8 +222,12 @@ if(WORKSPACE === 'nonmaersk'){
   });
 }
 
+let CUSTOM_RATES = [];
 function getRateMapping(jobType){
-  return RATE_MAP[(jobType||'').trim()] || null;
+  const key = (jobType||'').trim();
+  if(RATE_MAP[key]) return RATE_MAP[key];
+  const custom = CUSTOM_RATES.find(r=>r.jobType===key);
+  return custom && custom.unitPrice != null ? {flat: Number(custom.unitPrice)} : null;
 }
 function setUnitCostHint(show){
   document.getElementById('unitCostHint').style.display = show ? '' : 'none';
@@ -455,7 +459,17 @@ document.getElementById('f_host').addEventListener('change', (e)=>{
 
 loadDrivers();
 loadHosts();
+// Job Type dropdown includes both the built-in JOB_TYPES list and any custom
+// types added via the dashboard's Job Types & Rates tab.
 fillSelect(document.getElementById('f_jobType'), JOB_TYPES, '— select job type —');
+async function loadJobTypes(){
+  const sel = document.getElementById('f_jobType');
+  const {data} = await sb.from(TBL.rates).select('jobType, unitPrice');
+  CUSTOM_RATES = data || [];
+  const custom = CUSTOM_RATES.map(r=>r.jobType).filter(Boolean);
+  fillSelect(sel, [...new Set([...JOB_TYPES, ...custom])], '— select job type —');
+}
+loadJobTypes();
 setPax('');
 loadHourSelect(document.getElementById('f_start_h'));
 loadMinuteSelect(document.getElementById('f_start_m'));
@@ -548,7 +562,13 @@ async function openEdit(id){
   }
   driverSel.value = job.driver || '';
   setDate('f_date', job.date || '');
-  document.getElementById('f_jobType').value = job.jobType || '';
+  const jobTypeSel = document.getElementById('f_jobType');
+  if(job.jobType && ![...jobTypeSel.options].some(o=>o.value===job.jobType)){
+    const o = document.createElement('option');
+    o.value = job.jobType; o.textContent = job.jobType;
+    jobTypeSel.appendChild(o);
+  }
+  jobTypeSel.value = job.jobType || '';
   refreshVehicleField(job.jobType, job.vehicle);
   setUnitCostHint(!!getRateMapping(job.jobType));
   document.getElementById('f_host').value = job.hostName ? job.hostName.trim() : '';

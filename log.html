@@ -192,8 +192,12 @@ if(WORKSPACE === 'nonmaersk'){
   });
 }
 
+let CUSTOM_RATES = [];
 function getRateMapping(jobType){
-  return RATE_MAP[(jobType||'').trim()] || null;
+  const key = (jobType||'').trim();
+  if(RATE_MAP[key]) return RATE_MAP[key];
+  const custom = CUSTOM_RATES.find(r=>r.jobType===key);
+  return custom && custom.unitPrice != null ? {flat: Number(custom.unitPrice)} : null;
 }
 function setUnitCostHint(show){
   document.getElementById('unitCostHint').style.display = show ? '' : 'none';
@@ -379,7 +383,17 @@ function setDate(prefix, value){
   updateDateDisplay(prefix);
 }
 
+// Job Type dropdown includes both the built-in JOB_TYPES list and any custom
+// types added via the dashboard's Job Types & Rates tab.
 fillSelect(document.getElementById('f_jobType'), JOB_TYPES, '— select job type —');
+async function loadJobTypes(){
+  const sel = document.getElementById('f_jobType');
+  const {data} = await sb.from(TBL.rates).select('jobType, unitPrice');
+  CUSTOM_RATES = data || [];
+  const custom = CUSTOM_RATES.map(r=>r.jobType).filter(Boolean);
+  fillSelect(sel, [...new Set([...JOB_TYPES, ...custom])], '— select job type —');
+}
+loadJobTypes();
 loadDrivers();
 loadHosts();
 loadPax();

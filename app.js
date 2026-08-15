@@ -1043,11 +1043,17 @@ function fillSelect(sel, values, placeholder){
   sel.innerHTML = (placeholder?`<option value="">${placeholder}</option>`:'') + sorted.map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('');
 }
 
+// Job Type dropdown includes both the built-in JOB_TYPES list and any custom
+// types added via the Job Types & Rates tab (DATA.rates), so a newly added
+// rate shows up immediately without editing code.
+function allJobTypes(){
+  return [...new Set([...JOB_TYPES, ...DATA.rates.map(r=>r.jobType).filter(Boolean)])];
+}
 function setupModalOptions(currentDriverName){
   const driverNames = DATA.drivers.filter(d=>d.active !== false).map(d=>d.name);
   if(currentDriverName && !driverNames.includes(currentDriverName)) driverNames.push(currentDriverName);
   fillSelect(document.getElementById('f_driver'), driverNames, '— select driver —');
-  fillSelect(document.getElementById('f_jobType'), JOB_TYPES, '— select job type —');
+  fillSelect(document.getElementById('f_jobType'), allJobTypes(), '— select job type —');
   fillSelect(document.getElementById('f_client'), DATA.clients.map(c=>c.hostName), '— select or leave blank —');
 }
 
@@ -1166,7 +1172,10 @@ wireTimeMask(document.getElementById('f_end'));
 // ---------- Rate card: Job Type (+ Vehicle Type where the rate varies by vehicle) -> Unit Cost ----------
 // RATE_MAP comes from workspace-config.js (picks MAERSK vs Non-MAERSK pricing based on ?ws=).
 function getRateMapping(jobType){
-  return RATE_MAP[(jobType||'').trim()] || null;
+  const key = (jobType||'').trim();
+  if(RATE_MAP[key]) return RATE_MAP[key];
+  const custom = DATA.rates.find(r=>r.jobType===key);
+  return custom && custom.unitPrice != null ? {flat: Number(custom.unitPrice)} : null;
 }
 function setUnitCostHint(show){
   const hint = document.getElementById('unitCostHint');
