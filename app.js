@@ -1097,6 +1097,7 @@ document.getElementById('f_client').addEventListener('change', (e)=>{
   const current = jobTypeSel.value;
   fillSelect(jobTypeSel, filterJobTypesForHost(allJobTypes(), e.target.value), '— select job type —');
   jobTypeSel.value = current;
+  refreshOptionRowChoices();
 });
 
 // Additional Options: a repeatable list where each row picks one of the
@@ -1134,14 +1135,23 @@ function fmtOptionLabel(o){
 }
 function updateOptionNoteVisibility(row){
   const noteEl = row.querySelector('.optionNote');
-  noteEl.style.display = row.querySelector('.optionType').value === 'MISCELLANEOUS' ? '' : 'none';
+  const v = row.querySelector('.optionType').value;
+  noteEl.style.display = (v === 'MISCELLANEOUS' || v === '杂项') ? '' : 'none';
+}
+// Additional Options pool includes both the built-in list and custom rates
+// (so newly added Chinese types are selectable here too), filtered to
+// Chinese-only for Sharon, same as the Job Type dropdown.
+function additionalOptionsFor(hostName){
+  const pool = [...new Set([...ADDITIONAL_OPTIONS, ...DATA.rates.map(r=>r.jobType).filter(Boolean)])];
+  return filterJobTypesForHost(pool, hostName);
 }
 function addOptionRow(optionType, amount, note){
   const list = document.getElementById('optionsList');
   const row = document.createElement('div');
   row.className = 'optionRow';
   row.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;';
-  row.innerHTML = `<select class="optionType" style="flex:2;"><option value="">— select option —</option>${[...ADDITIONAL_OPTIONS].sort((a,b)=>a.localeCompare(b)).map(o=>`<option value="${o.replace(/"/g,'&quot;')}">${o}</option>`).join('')}</select>
+  const opts = additionalOptionsFor(document.getElementById('f_client').value);
+  row.innerHTML = `<select class="optionType" style="flex:2;"><option value="">— select option —</option>${[...opts].sort((a,b)=>a.localeCompare(b)).map(o=>`<option value="${o.replace(/"/g,'&quot;')}">${o}</option>`).join('')}</select>
     <input type="number" class="optionAmount" value="${amount ?? ''}" placeholder="Amount (S$)" step="any" style="flex:1;">
     <input type="text" class="optionNote" value="${(note ?? '').replace(/"/g,'&quot;')}" placeholder="Describe item…" style="flex:2;">
     <button type="button" class="btn secondary removeRowBtn" style="padding:6px 10px;flex:0 0 auto;">✕</button>`;
@@ -1151,6 +1161,15 @@ function addOptionRow(optionType, amount, note){
   row.querySelector('.optionType').addEventListener('change', ()=>{ applyOptionRate(row); updateOptionNoteVisibility(row); });
   updateOptionNoteVisibility(row);
   list.appendChild(row);
+}
+function refreshOptionRowChoices(){
+  const opts = additionalOptionsFor(document.getElementById('f_client').value);
+  document.querySelectorAll('#optionsList .optionRow').forEach(row=>{
+    const sel = row.querySelector('.optionType');
+    const current = sel.value;
+    fillSelect(sel, opts, '— select option —');
+    sel.value = current;
+  });
 }
 document.getElementById('addOptionBtn').addEventListener('click', ()=>addOptionRow('',''));
 
