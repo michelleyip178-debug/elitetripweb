@@ -32,16 +32,16 @@
   td.host-cell .small.muted{white-space:normal;}
   .payoutAlan-col{display:none;}
   body.ws-nonmaersk .payoutAlan-col{display:table-cell;}
+  th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.02em;position:sticky;top:0;background:var(--panel);z-index:5;will-change:transform;transform:translateZ(0);}
+  tr:hover td{background:#fafbfc;}
+  th.sortable{cursor:pointer;user-select:none;white-space:nowrap;}
+  th.sortable:hover{color:var(--ink);}
   th.time-col{white-space:normal;width:60px;text-align:center;}
   td.time-col{width:60px;}
   th.fit-col{white-space:normal;width:80px;text-align:center;}
   td.fit-col{width:80px;}
   th.payoutAlan-col.fit-col{width:105px;}
   td.payoutAlan-col.fit-col{width:105px;}
-  th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.02em;position:sticky;top:0;background:var(--panel);z-index:5;will-change:transform;transform:translateZ(0);}
-  tr:hover td{background:#fafbfc;}
-  th.sortable{cursor:pointer;user-select:none;white-space:nowrap;}
-  th.sortable:hover{color:var(--ink);}
   .sortArrow{display:inline-block;margin-left:4px;font-size:10px;opacity:.35;}
   .sortArrow.active{opacity:1;color:var(--accent);}
   .num{text-align:right;font-variant-numeric:tabular-nums;}
