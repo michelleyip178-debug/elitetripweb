@@ -443,7 +443,7 @@ function renderJobs(){
       <td>${fmtDate(j.date)}</td>
       <td>${j.invoice||''}</td>
       <td>${j.driver||''}</td>
-      <td>${j.jobType||''}</td>
+      <td class="jobtype-cell">${j.jobType||''}</td>
       <td>${j.startTime||''}</td>
       <td>${j.endTime||''}</td>
       <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
@@ -459,7 +459,7 @@ function renderJobs(){
       <td>${fmtDate(j.date)}</td>
       <td>${j.invoice||''}</td>
       <td>${j.driver||''}</td>
-      <td>${o.optionType||''}</td>
+      <td class="jobtype-cell">${o.optionType||''}</td>
       <td>${j.startTime||''}</td>
       <td>${j.endTime||''}</td>
       <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
@@ -550,7 +550,7 @@ function renderInvoices(){
       <td>${fmtDate(j.date)}</td>
       <td>${inv}</td>
       <td>${j.driver||''}</td>
-      <td>${j.jobType||''}</td>
+      <td class="jobtype-cell">${j.jobType||''}</td>
       <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${j.qty ?? ''}</td>
@@ -565,7 +565,7 @@ function renderInvoices(){
       <td>${fmtDate(j.date)}</td>
       <td>${inv}</td>
       <td>${j.driver||''}</td>
-      <td>${o.optionType||''}</td>
+      <td class="jobtype-cell">${o.optionType||''}</td>
       <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">1</td>
@@ -1316,7 +1316,7 @@ function renderMaerskSummary(){
       <td>${fmtDate(j.date)}</td>
       <td>${j.invoice||''}</td>
       <td>${j.driver||''}</td>
-      <td>${j.jobType||''}</td>
+      <td class="jobtype-cell">${j.jobType||''}</td>
       <td>${j.hostName||''}</td>
       <td>${j.uid||''}</td>
       <td>${j.costCentre||''}</td>

@@ -26,7 +26,8 @@
   .panel{overflow-x:auto;}
   th,td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap;}
   td .small.muted{white-space:nowrap;}
-  td.details-cell{white-space:normal;}
+  td.details-cell{white-space:normal;min-width:280px;}
+  td.jobtype-cell{white-space:normal;min-width:160px;}
   th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.02em;position:sticky;top:0;background:var(--panel);z-index:5;will-change:transform;transform:translateZ(0);}
   tr:hover td{background:#fafbfc;}
   th.sortable{cursor:pointer;user-select:none;white-space:nowrap;}
