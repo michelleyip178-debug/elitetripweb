@@ -94,6 +94,7 @@
           <th class="num sortable" data-key="cost">Cost<span class="sortArrow"></span></th>
           <th class="num sortable" data-key="driverPayout">Payout<span class="sortArrow"></span></th>
           <th class="num sortable" data-key="coyFund">Coy Fund<span class="sortArrow"></span></th>
+          <th class="num sortable payoutAlan-col" data-key="payoutAlan">Payout to Alan<span class="sortArrow"></span></th>
           <th class="sortable" data-key="paymentStatus">Status<span class="sortArrow"></span></th>
           <th></th>
         </tr></thead>
@@ -130,6 +131,7 @@
           <th class="num sortable" data-key="qty">Qty<span class="sortArrow"></span></th>
           <th class="num sortable" data-key="unitCost">Unit Cost<span class="sortArrow"></span></th>
           <th class="num sortable" data-key="cost">Cost<span class="sortArrow"></span></th>
+          <th class="num sortable payoutAlan-col" data-key="payoutAlan">Payout to Alan<span class="sortArrow"></span></th>
           <th class="sortable" data-key="paymentStatus">Status<span class="sortArrow"></span></th>
           <th></th>
         </tr></thead>
@@ -268,6 +270,7 @@
       <div><label>Driver Payout (S$)</label><input type="number" id="f_payout" step="any"></div>
 
       <div><label>Company Fund (S$)</label><input type="number" id="f_coyFund" step="any"><div class="small muted" style="margin-top:3px;">Defaults to Total Cost − Driver Payout; editable to override</div></div>
+      <div id="payoutAlanFieldWrap"><label>Payout to Alan (S$)</label><input type="number" id="f_payoutAlan" step="any"></div>
       <div><label>Payment Status</label><select id="f_status"><option>UNPAID</option><option>PENDING</option><option>PAID</option></select></div>
 
       <div class="full"><label>Remarks</label><input type="text" id="f_remarks"></div>

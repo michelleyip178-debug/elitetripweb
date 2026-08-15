@@ -13,7 +13,14 @@ if(WORKSPACE === 'nonmaersk'){
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
+} else {
+  // Payout to Alan is a manual field specific to ELITE jobs.
+  const el = document.getElementById('payoutAlanFieldWrap');
+  if(el) el.style.display = 'none';
 }
+// .payoutAlan-col (th and dynamically-rendered td cells alike) is hidden by
+// default in CSS and only shown for ELITE via this body class.
+if(WORKSPACE === 'nonmaersk') document.body.classList.add('ws-nonmaersk');
 
 // ---------- Auth ----------
 const loginOverlay = document.getElementById('loginOverlay');
@@ -413,6 +420,7 @@ const JOBS_SORT_ACCESSORS = {
   cost: j=>(Number(j.qty)||0)*(Number(j.unitCost)||0),
   driverPayout: j=>Number(j.driverPayout)||0,
   coyFund: j=>Number(j.coyFund)||0,
+  payoutAlan: j=>Number(j.payoutAlan)||0,
   paymentStatus: j=>j.paymentStatus||'',
 };
 const INVOICES_SORT_ACCESSORS = {
@@ -424,6 +432,7 @@ const INVOICES_SORT_ACCESSORS = {
   qty: j=>Number(j.qty)||0,
   unitCost: j=>Number(j.unitCost)||0,
   cost: j=>(Number(j.qty)||0)*(Number(j.unitCost)||0),
+  payoutAlan: j=>Number(j.payoutAlan)||0,
   paymentStatus: j=>j.paymentStatus||'',
 };
 wireSortableHeaders('jobsTable', 'jobs', ()=>renderJobs());
@@ -482,6 +491,7 @@ function renderJobs(_skipFit){
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
       <td class="num">${fmtMoney(j.coyFund)}</td>
+      <td class="num payoutAlan-col">${fmtMoney(j.payoutAlan)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>
@@ -498,10 +508,11 @@ function renderJobs(_skipFit){
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
       <td class="num">${fmtMoney(j.coyFund)}</td>
+      <td class="num payoutAlan-col">${fmtMoney(j.payoutAlan)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>`).join('')}
-  `).join('') : `<tr><td colspan="13" class="empty">No jobs match these filters</td></tr>`;
+  `).join('') : `<tr><td colspan="14" class="empty">No jobs match these filters</td></tr>`;
   renderPagination('jobsPagination', 'jobs', page, totalPages, renderJobs);
 
   if(!_skipFit){
@@ -597,6 +608,7 @@ function renderInvoices(_skipFit){
       <td class="num">${j.qty ?? ''}</td>
       <td class="num">${fmtMoney(j.unitCost)}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
+      <td class="num payoutAlan-col">${fmtMoney(j.payoutAlan)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>
@@ -612,13 +624,15 @@ function renderInvoices(_skipFit){
       <td class="num">1</td>
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
+      <td class="num payoutAlan-col"></td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>`).join('')}`;
-  }).join('') : `<tr><td colspan="12" class="empty">No records found</td></tr>`;
+  }).join('') : `<tr><td colspan="13" class="empty">No records found</td></tr>`;
   renderPagination('invoicesPagination', 'invoices', page, totalPages, renderInvoices);
   const checkable = [...document.querySelectorAll('.inv-check')];
   document.getElementById('invSelectAll').checked = checkable.length>0 && checkable.every(c=>c.checked);
+  updateMarkPaidBtnLabel();
 
   if(!_skipFit){
     requestAnimationFrame(()=>{
@@ -635,6 +649,15 @@ document.getElementById('fInvDate').addEventListener('change', ()=>{ pageState.i
 document.getElementById('fInvYear').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
 document.getElementById('fInvMonth').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
 
+// "Mark as Paid" toggles to "Mark as Unpaid" once every job under the
+// selected invoice(s) is already PAID — a smart toggle, not two buttons.
+function updateMarkPaidBtnLabel(){
+  const btn = document.getElementById('markPaidBtn');
+  if(!btn) return;
+  const jobs = DATA.jobs.filter(j=>selectedInvoices.has(j.invoice));
+  const allPaid = jobs.length>0 && jobs.every(j=>(j.paymentStatus||'').toUpperCase()==='PAID');
+  btn.textContent = allPaid ? 'Mark as Unpaid' : 'Mark as Paid';
+}
 document.querySelector('#invoicesTable tbody').addEventListener('change', e=>{
   if(e.target.matches('.inv-check')){
     const inv = decodeURIComponent(e.target.dataset.inv);
@@ -642,6 +665,7 @@ document.querySelector('#invoicesTable tbody').addEventListener('change', e=>{
     // Sync other rows sharing the same invoice # on this page.
     document.querySelectorAll(`.inv-check[data-inv="${e.target.dataset.inv}"]`).forEach(c=>c.checked = e.target.checked);
     document.getElementById('invSelectAll').checked = [...document.querySelectorAll('.inv-check')].every(c=>c.checked);
+    updateMarkPaidBtnLabel();
   }
 });
 document.getElementById('invSelectAll').addEventListener('change', e=>{
@@ -650,6 +674,7 @@ document.getElementById('invSelectAll').addEventListener('change', e=>{
     c.checked = e.target.checked;
     if(e.target.checked) selectedInvoices.add(inv); else selectedInvoices.delete(inv);
   });
+  updateMarkPaidBtnLabel();
 });
 
 // ---------- Auto-assign invoice numbers ----------
@@ -732,18 +757,21 @@ function csvField(v){
   return v;
 }
 document.getElementById('markPaidBtn').addEventListener('click', async ()=>{
-  if(selectedInvoices.size===0){ alert('Select at least one invoice to mark as paid.'); return; }
+  if(selectedInvoices.size===0){ alert('Select at least one invoice.'); return; }
   const invNums = [...selectedInvoices];
   const jobs = DATA.jobs.filter(j=>invNums.includes(j.invoice));
   if(jobs.length===0){ alert('No jobs found for the selected invoice(s).'); return; }
-  if(!confirm(`Mark ${jobs.length} job(s) across ${invNums.length} invoice(s) as PAID?`)) return;
+
+  const allPaid = jobs.every(j=>(j.paymentStatus||'').toUpperCase()==='PAID');
+  const target = allPaid ? 'UNPAID' : 'PAID';
+  if(!confirm(`Mark ${jobs.length} job(s) across ${invNums.length} invoice(s) as ${target}?`)) return;
 
   const ids = jobs.map(j=>j.id);
-  const {error} = await sb.from(TBL.jobs).update({paymentStatus:'PAID'}).in('id', ids);
-  if(error){ alert('Failed to mark as paid: '+error.message); return; }
-  jobs.forEach(j=>{ j.paymentStatus = 'PAID'; });
+  const {error} = await sb.from(TBL.jobs).update({paymentStatus:target}).in('id', ids);
+  if(error){ alert('Failed to update status: '+error.message); return; }
+  jobs.forEach(j=>{ j.paymentStatus = target; });
   renderAll();
-  alert(`Marked ${jobs.length} job(s) as PAID.`);
+  alert(`Marked ${jobs.length} job(s) as ${target}.`);
 });
 document.getElementById('generateInvoiceBtn').addEventListener('click', ()=>{
   if(selectedInvoices.size===0){ alert('Select at least one invoice to generate.'); return; }
@@ -1221,6 +1249,7 @@ async function openJobModal(id){
   document.getElementById('f_coyFund').value = job?.coyFund ?? '';
   const expectedCoyFund = (Number(job?.cost)||0) - (Number(job?.driverPayout)||0);
   coyFundEdited = !!job && Math.abs((Number(job.coyFund)||0) - expectedCoyFund) > 0.005;
+  if(WORKSPACE === 'nonmaersk') document.getElementById('f_payoutAlan').value = job?.payoutAlan ?? '';
   document.getElementById('f_status').value = (job?.paymentStatus || 'UNPAID').toUpperCase();
   document.getElementById('f_remarks').value = job?.remarks || '';
   toggleQtyHint();
@@ -1307,6 +1336,7 @@ document.getElementById('saveJobBtn').addEventListener('click', async ()=>{
     paymentStatus: document.getElementById('f_status').value,
     remarks: document.getElementById('f_remarks').value,
   };
+  if(WORKSPACE === 'nonmaersk') job.payoutAlan = Number(document.getElementById('f_payoutAlan').value)||0;
   if(!job.date){ alert('Please set a date.'); return; }
   if(editingId){
     job.id = editingId;
