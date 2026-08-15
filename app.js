@@ -94,12 +94,33 @@ function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').r
 // ---------- Pagination ----------
 const PAGE_SIZE = 15;
 const pageState = {};
+// Job Log & Invoices adjust their page size to fit the panel height (no
+// scrolling needed to see a full page); other views use the fixed PAGE_SIZE.
+const DYNAMIC_PAGE_SIZE = { jobs: PAGE_SIZE, invoices: PAGE_SIZE };
 function paginate(key, items){
-  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const size = DYNAMIC_PAGE_SIZE[key] || PAGE_SIZE;
+  const totalPages = Math.max(1, Math.ceil(items.length / size));
   pageState[key] = Math.min(Math.max(1, pageState[key] || 1), totalPages);
   const page = pageState[key];
-  const start = (page-1)*PAGE_SIZE;
-  return { items: items.slice(start, start+PAGE_SIZE), page, totalPages };
+  const start = (page-1)*size;
+  return { items: items.slice(start, start+size), page, totalPages };
+}
+// Measures how many rows actually fit in a table's panel without scrolling,
+// based on the currently-rendered rows' real (possibly multi-line) height.
+function fitRowsToPanel(tableId){
+  const table = document.getElementById(tableId);
+  if(!table) return null;
+  const panel = table.closest('.panel');
+  const thead = table.querySelector('thead');
+  const tbody = table.querySelector('tbody');
+  if(!panel || !tbody) return null;
+  const rows = [...tbody.children].filter(r=>!r.querySelector('.empty'));
+  if(!rows.length) return null;
+  const theadH = thead ? thead.offsetHeight : 0;
+  const avgRowH = rows.reduce((s,r)=>s+r.offsetHeight, 0) / rows.length;
+  if(!avgRowH) return null;
+  const availableH = panel.clientHeight - theadH;
+  return Math.max(5, Math.floor(availableH / avgRowH));
 }
 function renderPagination(containerId, key, page, totalPages, onChange){
   const el = document.getElementById(containerId);
@@ -111,6 +132,16 @@ function renderPagination(containerId, key, page, totalPages, onChange){
     onChange();
   }));
 }
+// Re-measure Job Log / Invoices row-fit on resize (debounced) so the page size
+// keeps matching the available panel height.
+let resizeFitTimer = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(resizeFitTimer);
+  resizeFitTimer = setTimeout(()=>{
+    if(document.getElementById('view-jobs')?.classList.contains('active')) renderJobs();
+    if(document.getElementById('view-invoices')?.classList.contains('active')) renderInvoices();
+  }, 250);
+});
 
 // Force free-text data entry fields to uppercase, matching the ALL-CAPS convention used throughout the data.
 // Skips while an IME composition is active (e.g. typing Chinese via pinyin) so the candidate popup isn't disrupted;
@@ -400,7 +431,7 @@ wireSortableHeaders('invoicesTable', 'invoices', ()=>renderInvoices());
 document.getElementById('jobsClearSortBtn').addEventListener('click', ()=>{ sortState.jobs = null; renderJobs(); });
 document.getElementById('invoicesClearSortBtn').addEventListener('click', ()=>{ sortState.invoices = null; renderInvoices(); });
 
-function renderJobs(){
+function renderJobs(_skipFit){
   populateFilterOptions();
   const month = document.getElementById('fMonth').value;
   const driver = document.getElementById('fDriver').value;
@@ -472,6 +503,16 @@ function renderJobs(){
     </tr>`).join('')}
   `).join('') : `<tr><td colspan="13" class="empty">No jobs match these filters</td></tr>`;
   renderPagination('jobsPagination', 'jobs', page, totalPages, renderJobs);
+
+  if(!_skipFit){
+    requestAnimationFrame(()=>{
+      const fit = fitRowsToPanel('jobsTable');
+      if(fit && fit !== DYNAMIC_PAGE_SIZE.jobs){
+        DYNAMIC_PAGE_SIZE.jobs = fit;
+        renderJobs(true);
+      }
+    });
+  }
 }
 
 ['fMonth','fDriver','fStatus'].forEach(id=>document.getElementById(id).addEventListener('change', ()=>{ pageState.jobs=1; renderJobs(); }));
@@ -514,7 +555,7 @@ function populateInvoiceFilterOptions(){
   fDate.value = dates.includes(prevDate) ? prevDate : '';
 }
 
-function renderInvoices(){
+function renderInvoices(_skipFit){
   populateInvoiceFilterOptions();
   const search = document.getElementById('fInvSearch').value.toLowerCase();
   const year = document.getElementById('fInvYear').value;
@@ -578,6 +619,16 @@ function renderInvoices(){
   renderPagination('invoicesPagination', 'invoices', page, totalPages, renderInvoices);
   const checkable = [...document.querySelectorAll('.inv-check')];
   document.getElementById('invSelectAll').checked = checkable.length>0 && checkable.every(c=>c.checked);
+
+  if(!_skipFit){
+    requestAnimationFrame(()=>{
+      const fit = fitRowsToPanel('invoicesTable');
+      if(fit && fit !== DYNAMIC_PAGE_SIZE.invoices){
+        DYNAMIC_PAGE_SIZE.invoices = fit;
+        renderInvoices(true);
+      }
+    });
+  }
 }
 document.getElementById('fInvSearch').addEventListener('input', ()=>{ pageState.invoices=1; renderInvoices(); });
 document.getElementById('fInvDate').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
@@ -673,7 +724,7 @@ function renderTripDetailsCell(j){
     if(j.driver) lines.push(`DRIVER: ${escHtml(j.driver)}`);
     return lines.length ? `<div class="small" style="white-space:pre-line;">${lines.join('\n')}</div>` : '';
   }
-  return j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : '';
+  return j.details ? `<div class="small" style="white-space:pre-line;">${escHtml(j.details)}</div>` : '';
 }
 function csvField(v){
   v = v==null ? '' : String(v);
