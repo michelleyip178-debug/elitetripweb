@@ -490,8 +490,8 @@ function renderJobs(_skipFit){
       <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
-      <td class="num">${fmtMoney(j.coyFund)}</td>
-      <td class="num payoutAlan-col">${fmtMoney(j.payoutAlan)}</td>
+      <td class="num fit-col">${fmtMoney(j.coyFund)}</td>
+      <td class="num payoutAlan-col fit-col">${fmtMoney(j.payoutAlan)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>
@@ -507,8 +507,8 @@ function renderJobs(_skipFit){
       <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
-      <td class="num">${fmtMoney(j.coyFund)}</td>
-      <td class="num payoutAlan-col">${fmtMoney(j.payoutAlan)}</td>
+      <td class="num fit-col">${fmtMoney(j.coyFund)}</td>
+      <td class="num payoutAlan-col fit-col">${fmtMoney(j.payoutAlan)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>`).join('')}
@@ -608,7 +608,7 @@ function renderInvoices(_skipFit){
       <td class="num">${j.qty ?? ''}</td>
       <td class="num">${fmtMoney(j.unitCost)}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
-      <td class="num payoutAlan-col">${fmtMoney(j.payoutAlan)}</td>
+      <td class="num payoutAlan-col fit-col">${fmtMoney(j.payoutAlan)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>
@@ -624,7 +624,7 @@ function renderInvoices(_skipFit){
       <td class="num">1</td>
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
-      <td class="num payoutAlan-col"></td>
+      <td class="num payoutAlan-col fit-col"></td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>`).join('')}`;
