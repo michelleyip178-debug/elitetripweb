@@ -214,9 +214,9 @@
 document.title = document.title.replace('EliteSkyline', `EliteSkyline (${WORKSPACE_LABEL})`);
 document.querySelector('header .sub').textContent = `Find and edit a trip you've logged · ${WORKSPACE_LABEL}`;
 
-// ELITE jobs don't need Host Name / Cost Centre.
+// ELITE jobs don't need Cost Centre (Host Name stays).
 if(WORKSPACE === 'nonmaersk'){
-  ['sHostFieldWrap','fHostFieldWrap','fCostCentreFieldWrap'].forEach(id=>{
+  ['fCostCentreFieldWrap'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
