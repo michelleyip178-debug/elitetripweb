@@ -92,7 +92,7 @@ let editingRateId = null;
 function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // ---------- Pagination ----------
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 10;
 const pageState = {};
 // Job Log & Invoices adjust their page size to fit the panel height (no
 // scrolling needed to see a full page); other views use the fixed PAGE_SIZE.
@@ -120,7 +120,7 @@ function fitRowsToPanel(tableId){
   const avgRowH = rows.reduce((s,r)=>s+r.offsetHeight, 0) / rows.length;
   if(!avgRowH) return null;
   const availableH = panel.clientHeight - theadH;
-  return Math.max(5, Math.floor(availableH / avgRowH));
+  return Math.min(PAGE_SIZE, Math.max(5, Math.floor(availableH / avgRowH)));
 }
 function renderPagination(containerId, key, page, totalPages, onChange){
   const el = document.getElementById(containerId);
