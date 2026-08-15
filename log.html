@@ -210,10 +210,14 @@ function refreshVehicleField(jobType){
     wrap.style.display = 'none';
   }
 }
+// ELITE lets drivers/staff override Unit Cost from the rate card once they've
+// typed into it directly; MAERSK keeps the rate card authoritative.
+let unitCostEdited = false;
 function applyRateToUnitCost(){
   const jobType = document.getElementById('f_jobType').value;
   const map = getRateMapping(jobType);
   if(!map){ setUnitCostHint(false); return; }
+  if(WORKSPACE === 'nonmaersk' && unitCostEdited){ setUnitCostHint(true); return; }
   if(map.flat != null){
     document.getElementById('f_unitCost').value = map.flat;
     setUnitCostHint(true);
@@ -229,6 +233,7 @@ function applyRateToUnitCost(){
     }
   }
 }
+document.getElementById('f_unitCost').addEventListener('input', ()=>{ unitCostEdited = true; });
 
 
 function fillSelect(sel, values, placeholder){
@@ -573,6 +578,7 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
   ['f_host','f_costCentre','f_itinerary','f_start_h','f_start_m','f_end_h','f_end_m','f_remarks'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f_jobType').value = '';
   document.getElementById('f_unitCost').value = '';
+  unitCostEdited = false;
   document.getElementById('f_qty').value = 1;
   refreshVehicleField('');
   setUnitCostHint(false);
