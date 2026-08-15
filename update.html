@@ -373,7 +373,7 @@ function extractRoute(text){
   return text.split('\n').filter(l=>!/^\s*(REQUESTOR|UID|COST CENTRE|DRIVER|PAX|TIME)\s*:/i.test(l)).join('\n').trim();
 }
 function extractPax(text){
-  const m = (text||'').match(/^\s*PAX\s*:\s*(.+)$/im);
+  const m = (text||'').match(/^[ \t]*PAX[ \t]*:[ \t]*(.+)$/im);
   return m ? m[1].trim() : null;
 }
 function extractUid(text){
@@ -407,16 +407,22 @@ function applyOptionRate(row){
     row.querySelector('.optionAmount').value = (baseCost * map.percentOfCost/100).toFixed(2);
   }
 }
-function addOptionRow(optionType, amount){
+function updateOptionNoteVisibility(row){
+  const noteEl = row.querySelector('.optionNote');
+  noteEl.style.display = row.querySelector('.optionType').value === 'MISCELLANEOUS' ? '' : 'none';
+}
+function addOptionRow(optionType, amount, note){
   const list = document.getElementById('optionsList');
   const row = document.createElement('div');
   row.className = 'optionRow';
   row.innerHTML = `<select class="optionType" style="flex:2;"><option value="">— select option —</option>${[...ADDITIONAL_OPTIONS].sort((a,b)=>a.localeCompare(b)).map(o=>`<option value="${o.replace(/"/g,'&quot;')}">${o}</option>`).join('')}</select>
     <input type="number" class="optionAmount" value="${amount ?? ''}" placeholder="Amount (S$)" step="any" style="flex:1;">
+    <input type="text" class="optionNote" value="${(note ?? '').replace(/"/g,'&quot;')}" placeholder="Describe item…" style="flex:2;">
     <button type="button" class="btn secondary removeRowBtn">✕</button>`;
   row.querySelector('.optionType').value = optionType || '';
   row.querySelector('.removeRowBtn').addEventListener('click', ()=>row.remove());
-  row.querySelector('.optionType').addEventListener('change', ()=>applyOptionRate(row));
+  row.querySelector('.optionType').addEventListener('change', ()=>{ applyOptionRate(row); updateOptionNoteVisibility(row); });
+  updateOptionNoteVisibility(row);
   list.appendChild(row);
 }
 document.getElementById('addOptionBtn').addEventListener('click', ()=>addOptionRow('',''));
@@ -553,7 +559,7 @@ async function openEdit(id){
 
   document.getElementById('optionsList').innerHTML = '';
   const {data: options} = await sb.from(TBL.job_options).select('*').eq('job_id', id).order('id');
-  (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount));
+  (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount, o.note));
 
   showEdit();
   window.scrollTo({top:0, behavior:'smooth'});
@@ -652,6 +658,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
         job_id: editingId,
         optionType: row.querySelector('.optionType').value,
         amount: Number(row.querySelector('.optionAmount').value)||0,
+        note: row.querySelector('.optionNote').value.trim() || null,
       }))
       .filter(o=>o.optionType);
     await sb.from(TBL.job_options).delete().eq('job_id', editingId);

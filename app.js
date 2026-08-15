@@ -490,7 +490,7 @@ function renderJobs(_skipFit){
       <td>${fmtDate(j.date)}</td>
       <td>${j.invoice||''}</td>
       <td class="driver-cell">${j.driver||''}</td>
-      <td class="jobtype-cell">${o.optionType||''}</td>
+      <td class="jobtype-cell">${fmtOptionLabel(o)}</td>
       <td>${j.startTime||''}</td>
       <td>${j.endTime||''}</td>
       <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
@@ -606,7 +606,7 @@ function renderInvoices(_skipFit){
       <td>${fmtDate(j.date)}</td>
       <td>${inv}</td>
       <td class="driver-cell">${j.driver||''}</td>
-      <td class="jobtype-cell">${o.optionType||''}</td>
+      <td class="jobtype-cell">${fmtOptionLabel(o)}</td>
       <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">1</td>
@@ -709,7 +709,7 @@ function extractRoute(text){
   return text.split('\n').filter(l=>!/^\s*(REQUESTOR|UID|COST CENTRE|DRIVER|PAX|TIME)\s*:/i.test(l)).join('\n').trim();
 }
 function extractPax(text){
-  const m = (text||'').match(/^\s*PAX\s*:\s*(.+)$/im);
+  const m = (text||'').match(/^[ \t]*PAX[ \t]*:[ \t]*(.+)$/im);
   return m ? m[1].trim() : null;
 }
 // ELITE jobs don't carry Host/UID/Cost Centre, so their Trip Details cell just
@@ -1048,18 +1048,27 @@ function applyOptionRate(row){
   }
   recalc();
 }
-function addOptionRow(optionType, amount){
+function fmtOptionLabel(o){
+  return o.note ? `${o.optionType||''} — ${o.note}` : (o.optionType||'');
+}
+function updateOptionNoteVisibility(row){
+  const noteEl = row.querySelector('.optionNote');
+  noteEl.style.display = row.querySelector('.optionType').value === 'MISCELLANEOUS' ? '' : 'none';
+}
+function addOptionRow(optionType, amount, note){
   const list = document.getElementById('optionsList');
   const row = document.createElement('div');
   row.className = 'optionRow';
   row.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;';
   row.innerHTML = `<select class="optionType" style="flex:2;"><option value="">— select option —</option>${[...ADDITIONAL_OPTIONS].sort((a,b)=>a.localeCompare(b)).map(o=>`<option value="${o.replace(/"/g,'&quot;')}">${o}</option>`).join('')}</select>
     <input type="number" class="optionAmount" value="${amount ?? ''}" placeholder="Amount (S$)" step="any" style="flex:1;">
+    <input type="text" class="optionNote" value="${(note ?? '').replace(/"/g,'&quot;')}" placeholder="Describe item…" style="flex:2;">
     <button type="button" class="btn secondary removeRowBtn" style="padding:6px 10px;flex:0 0 auto;">✕</button>`;
   row.querySelector('.optionType').value = optionType || '';
   row.querySelector('.removeRowBtn').addEventListener('click', ()=>{ row.remove(); recalc(); });
   row.querySelector('.optionAmount').addEventListener('input', recalc);
-  row.querySelector('.optionType').addEventListener('change', ()=>applyOptionRate(row));
+  row.querySelector('.optionType').addEventListener('change', ()=>{ applyOptionRate(row); updateOptionNoteVisibility(row); });
+  updateOptionNoteVisibility(row);
   list.appendChild(row);
 }
 document.getElementById('addOptionBtn').addEventListener('click', ()=>addOptionRow('',''));
@@ -1185,7 +1194,7 @@ async function openJobModal(id){
   document.getElementById('optionsList').innerHTML = '';
   if(id){
     const {data: options} = await sb.from(TBL.job_options).select('*').eq('job_id', id).order('id');
-    (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount));
+    (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount, o.note));
   }
   recalc();
 
@@ -1227,6 +1236,7 @@ async function syncStopsAndExtras(jobId){
       job_id: jobId,
       optionType: row.querySelector('.optionType').value,
       amount: Number(row.querySelector('.optionAmount').value)||0,
+      note: row.querySelector('.optionNote').value.trim() || null,
     }))
     .filter(o=>o.optionType);
 
