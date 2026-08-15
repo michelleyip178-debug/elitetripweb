@@ -195,6 +195,11 @@
       </div>
     </div>
 
+    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel,#fff);border:1px solid var(--line,#e3e6ec);border-radius:10px;padding:14px 16px;margin:10px 0 16px;">
+      <span style="font-size:12px;color:var(--muted);">Total Cost</span>
+      <span id="totalDisplay" style="font-size:22px;font-weight:700;">S$0.00</span>
+    </div>
+
     <div class="field">
       <label>Remarks</label>
       <input type="text" id="f_remarks">
@@ -256,11 +261,13 @@ function applyRateToUnitCost(){
   if(map.flat != null){
     document.getElementById('f_unitCost').value = map.flat;
     setUnitCostHint(true);
+    updateTotal();
   } else if(map.byVehicle){
     const vehicle = document.getElementById('f_vehicle').value;
     if(vehicle && map.byVehicle[vehicle] != null){
       document.getElementById('f_unitCost').value = map.byVehicle[vehicle];
       setUnitCostHint(true);
+      updateTotal();
     } else {
       setUnitCostHint(false);
     }
@@ -429,12 +436,21 @@ function addOptionRow(optionType, amount, note){
     <input type="text" class="optionNote" value="${(note ?? '').replace(/"/g,'&quot;')}" placeholder="Describe item…" style="flex:2;">
     <button type="button" class="btn secondary removeRowBtn">✕</button>`;
   row.querySelector('.optionType').value = optionType || '';
-  row.querySelector('.removeRowBtn').addEventListener('click', ()=>row.remove());
+  row.querySelector('.removeRowBtn').addEventListener('click', ()=>{ row.remove(); updateTotal(); });
+  row.querySelector('.optionAmount').addEventListener('input', updateTotal);
   row.querySelector('.optionType').addEventListener('change', ()=>{ applyOptionRate(row); updateOptionNoteVisibility(row); });
   updateOptionNoteVisibility(row);
   list.appendChild(row);
 }
 document.getElementById('addOptionBtn').addEventListener('click', ()=>addOptionRow('',''));
+
+function updateTotal(){
+  const qty = Number(document.getElementById('f_qty').value)||0;
+  const unitCost = Number(document.getElementById('f_unitCost').value)||0;
+  const total = qty*unitCost + sumExtras();
+  document.getElementById('totalDisplay').textContent = 'S$' + total.toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+['f_qty','f_unitCost'].forEach(id=>document.getElementById(id).addEventListener('input', updateTotal));
 
 async function loadDrivers(){
   const {data} = await sb.from(TBL.drivers).select('name, active').eq('active', true).order('name');
@@ -608,6 +624,7 @@ async function openEdit(id){
   document.getElementById('optionsList').innerHTML = '';
   const {data: options} = await sb.from(TBL.job_options).select('*').eq('job_id', id).order('id');
   (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount, o.note));
+  updateTotal();
 
   showEdit();
   window.scrollTo({top:0, behavior:'smooth'});
