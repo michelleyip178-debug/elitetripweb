@@ -5,9 +5,11 @@ document.title = document.title.replace('EliteSkyline', `EliteSkyline (${WORKSPA
 document.querySelector('header h1').textContent = `EliteSkyline — Job Log (${WORKSPACE_LABEL})`;
 document.querySelector('.login-box .sub').textContent = `Sign in to access the ${WORKSPACE_LABEL} Job Log`;
 
-// ELITE jobs don't need Host Name / Company / UID / Cost Centre on the job form.
+// ELITE jobs don't need Host Name / Company / UID / Cost Centre on the job form,
+// and the MAERSK Summary tab (filters by MAERSK SINGAPORE PTE LTD + SG51 cost
+// centre) is irrelevant for ELITE.
 if(WORKSPACE === 'nonmaersk'){
-  ['clientFieldWrap','companyFieldWrap','uidFieldWrap','costCentreFieldWrap'].forEach(id=>{
+  ['clientFieldWrap','companyFieldWrap','uidFieldWrap','costCentreFieldWrap','maerskNavBtn'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
