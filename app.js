@@ -752,7 +752,6 @@ function renderTripDetailsCell(j){
     const lines = [];
     if(itinerary) lines.push(escHtml(itinerary));
     if(pax) lines.push(`PAX: ${escHtml(pax)}`);
-    if(j.driver && !isTourGuideJobType(j.jobType)) lines.push(`DRIVER: ${escHtml(j.driver)}`);
     return lines.length ? `<div class="small" style="white-space:pre-line;">${lines.join('\n')}</div>` : '';
   }
   return j.details ? `<div class="small" style="white-space:pre-line;">${escHtml(j.details)}</div>` : '';
