@@ -48,7 +48,7 @@ function extractRoute(text){
   return text.split('\n').filter(l=>!/^\s*(REQUESTOR|UID|COST CENTRE|DRIVER|PAX|TIME)\s*:/i.test(l)).join('\n').trim();
 }
 function extractPax(text){
-  const m = (text||'').match(/^\s*PAX\s*:\s*(.+)$/im);
+  const m = (text||'').match(/^[ \t]*PAX[ \t]*:[ \t]*(.+)$/im);
   return m ? m[1].trim() : null;
 }
 function isHourlyJobType(jobType){ return /HOURLY/i.test(jobType||''); }
@@ -57,9 +57,11 @@ function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').r
 // Same line-item description logic as buildItemDescription() in app.js.
 function buildItemDescription(job, drivers){
   const lines = [];
-  if(job.hostName) lines.push(`REQUESTOR: ${job.hostName}`);
-  if(job.uid) lines.push(`UID: ${job.uid}`);
-  if(job.costCentre) lines.push(`COST CENTRE: ${job.costCentre}`);
+  if(WORKSPACE !== 'nonmaersk'){
+    if(job.hostName) lines.push(`REQUESTOR: ${job.hostName}`);
+    if(job.uid) lines.push(`UID: ${job.uid}`);
+    if(job.costCentre) lines.push(`COST CENTRE: ${job.costCentre}`);
+  }
   const route = extractRoute(job.details);
   if(route) lines.push(route);
   const pax = extractPax(job.details);

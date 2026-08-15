@@ -721,7 +721,7 @@ function renderTripDetailsCell(j){
     const lines = [];
     if(itinerary) lines.push(escHtml(itinerary));
     if(pax) lines.push(`PAX: ${escHtml(pax)}`);
-    if(j.driver) lines.push(`DRIVER: ${escHtml(j.driver)}`);
+    if(j.driver && !isTourGuideJobType(j.jobType)) lines.push(`DRIVER: ${escHtml(j.driver)}`);
     return lines.length ? `<div class="small" style="white-space:pre-line;">${lines.join('\n')}</div>` : '';
   }
   return j.details ? `<div class="small" style="white-space:pre-line;">${escHtml(j.details)}</div>` : '';
@@ -1090,6 +1090,10 @@ function recalc(){
 function isHourlyJobType(jt){
   return !!jt && jt.toUpperCase().includes('HOURLY');
 }
+// TOUR GUIDE assignees are guides, not drivers — don't label them as DRIVER in trip details.
+function isTourGuideJobType(jt){
+  return !!jt && jt.toUpperCase().includes('TOUR GUIDE');
+}
 function toggleQtyHint(){
   const hint = document.getElementById('qtyHint');
   if(hint) hint.style.display = isHourlyJobType(document.getElementById('f_jobType').value) ? '' : 'none';
@@ -1217,7 +1221,7 @@ function buildTripDetails({hostName, uid, costCentre, pax, itinerary, driver, st
   if(itinerary) lines.push(itinerary);
   const d = DATA.drivers.find(x=>x.name===driver);
   const plate = d?.plate || '';
-  lines.push(`DRIVER: ${driver||''}${plate?` (${plate})`:''}`);
+  if(!isTourGuideJobType(jobType)) lines.push(`DRIVER: ${driver||''}${plate?` (${plate})`:''}`);
   if(isHourlyJobType(jobType)){
     if(startTime){
       const s = startTime.replace(':','');

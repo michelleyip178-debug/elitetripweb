@@ -582,6 +582,10 @@ document.getElementById('f_vehicle').addEventListener('change', applyRateToUnitC
 function isHourlyJobType(jt){
   return !!jt && jt.toUpperCase().includes('HOURLY');
 }
+// TOUR GUIDE assignees are guides, not drivers — don't label them as DRIVER in trip details.
+function isTourGuideJobType(jt){
+  return !!jt && jt.toUpperCase().includes('TOUR GUIDE');
+}
 function updateQtyFromTime(){
   const jt = document.getElementById('f_jobType').value;
   document.getElementById('qtyHint').style.display = isHourlyJobType(jt) ? '' : 'none';
@@ -629,7 +633,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
   lines.push(`COST CENTRE: ${costCentre}`);
   lines.push(`PAX: ${pax||''}`);
   if(itinerary) lines.push(itinerary);
-  lines.push(`DRIVER: ${driver}`);
+  if(!isTourGuideJobType(jobType)) lines.push(`DRIVER: ${driver}`);
   if(isHourlyJobType(jobType)){
     if(startTime){
       const s = startTime.replace(':',''), e = endTime ? endTime.replace(':','') : '';
