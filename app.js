@@ -1070,6 +1070,9 @@ function allJobTypes(){
 function hasChineseText(s){
   return /[一-鿿]/.test(s||'');
 }
+function isSharonHost(hostName){
+  return (hostName||'').trim().toUpperCase() === 'SHARON';
+}
 // Sharon's trips are Chinese-language tour groups — default the Job Type
 // dropdown to Chinese-named types for her (falls back to the full list if
 // none exist yet, so the dropdown is never left empty).
@@ -1098,6 +1101,7 @@ document.getElementById('f_client').addEventListener('change', (e)=>{
   fillSelect(jobTypeSel, filterJobTypesForHost(allJobTypes(), e.target.value), '— select job type —');
   jobTypeSel.value = current;
   refreshOptionRowChoices();
+  recalc();
 });
 
 // Additional Options: a repeatable list where each row picks one of the
@@ -1187,9 +1191,18 @@ function recalc(){
   const cost = Number(document.getElementById('f_cost').value)||0;
 
   const payout = Number(document.getElementById('f_payout').value)||0;
-  if(!coyFundEdited) document.getElementById('f_coyFund').value = cost ? (cost - payout).toFixed(2) : '';
+  if(!coyFundEdited){
+    // Sharon's jobs default Coy Fund to Payout to Alan instead of Cost - Driver Payout.
+    if(WORKSPACE === 'nonmaersk' && isSharonHost(document.getElementById('f_client').value)){
+      const payoutAlan = document.getElementById('f_payoutAlan').value;
+      document.getElementById('f_coyFund').value = payoutAlan === '' ? '' : (Number(payoutAlan)||0).toFixed(2);
+    } else {
+      document.getElementById('f_coyFund').value = cost ? (cost - payout).toFixed(2) : '';
+    }
+  }
 }
 ['f_qty','f_unitCost','f_payout'].forEach(id=>document.getElementById(id).addEventListener('input', recalc));
+document.getElementById('f_payoutAlan').addEventListener('input', recalc);
 document.getElementById('f_cost').addEventListener('input', ()=>{
   if(WORKSPACE === 'nonmaersk') costEdited = true;
   recalc();
@@ -1316,9 +1329,12 @@ async function openJobModal(id){
   document.getElementById('f_cost').value = job?.cost ?? '';
   document.getElementById('f_payout').value = job?.driverPayout ?? '';
   document.getElementById('f_coyFund').value = job?.coyFund ?? '';
-  const expectedCoyFund = (Number(job?.cost)||0) - (Number(job?.driverPayout)||0);
-  coyFundEdited = !!job && Math.abs((Number(job.coyFund)||0) - expectedCoyFund) > 0.005;
   if(WORKSPACE === 'nonmaersk') document.getElementById('f_payoutAlan').value = job?.payoutAlan ?? '';
+  // Sharon's jobs default Coy Fund to Payout to Alan instead of Cost - Driver Payout.
+  const expectedCoyFund = (WORKSPACE === 'nonmaersk' && isSharonHost(job?.hostName))
+    ? (Number(job?.payoutAlan)||0)
+    : (Number(job?.cost)||0) - (Number(job?.driverPayout)||0);
+  coyFundEdited = !!job && Math.abs((Number(job.coyFund)||0) - expectedCoyFund) > 0.005;
   document.getElementById('f_status').value = (job?.paymentStatus || 'UNPAID').toUpperCase();
   document.getElementById('f_remarks').value = job?.remarks || '';
   toggleQtyHint();
