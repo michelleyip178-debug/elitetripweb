@@ -1143,8 +1143,11 @@ function applyOptionRate(row){
   }
   recalc();
 }
+// ADDITIONAL STOP's description shows in the Trip Details column instead
+// (see renderOptionDetailsCell) — keep Job Type showing just the job type.
 function fmtOptionLabel(o){
-  return o.note ? `${o.optionType||''} — ${o.note}` : (o.optionType||'');
+  if(o.note && !/^ADDITIONAL STOP/i.test(o.optionType||'')) return `${o.optionType||''} — ${o.note}`;
+  return o.optionType||'';
 }
 // MISCELLANEOUS and ADDITIONAL STOP (any variant) both take a free-text
 // description, since neither is specific enough on its own.
