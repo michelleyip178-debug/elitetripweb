@@ -1073,8 +1073,9 @@ function addOptionRow(optionType, amount, note){
 }
 document.getElementById('addOptionBtn').addEventListener('click', ()=>addOptionRow('',''));
 
-// Company Fund is always derived: Total Cost − Driver Payout. Driver Payout is
-// the manually-entered field for every driver, in both workspaces.
+// Company Fund defaults to Total Cost − Driver Payout, but is editable —
+// once the user types into it directly, stop overwriting their value.
+let coyFundEdited = false;
 function recalc(){
   const qty = Number(document.getElementById('f_qty').value)||0;
   const unitCost = Number(document.getElementById('f_unitCost').value)||0;
@@ -1082,9 +1083,10 @@ function recalc(){
   document.getElementById('f_cost').value = cost || '';
 
   const payout = Number(document.getElementById('f_payout').value)||0;
-  document.getElementById('f_coyFund').value = cost ? (cost - payout).toFixed(2) : '';
+  if(!coyFundEdited) document.getElementById('f_coyFund').value = cost ? (cost - payout).toFixed(2) : '';
 }
 ['f_qty','f_unitCost','f_payout'].forEach(id=>document.getElementById(id).addEventListener('input', recalc));
+document.getElementById('f_coyFund').addEventListener('input', ()=>{ coyFundEdited = true; });
 
 // For HOURLY job types, derive Qty from Start/End time (billed in whole-hour blocks, rounded up)
 function isHourlyJobType(jt){
@@ -1167,6 +1169,7 @@ document.getElementById('f_vehicle').addEventListener('change', applyRateToUnitC
 
 async function openJobModal(id){
   editingId = id || null;
+  coyFundEdited = false;
   const job = id ? DATA.jobs.find(j=>j.id===id) : null;
   document.getElementById('jobModalTitle').textContent = job ? 'Edit Job' : 'New Job';
   document.getElementById('deleteJobBtn').style.display = job ? '' : 'none';
@@ -1191,6 +1194,9 @@ async function openJobModal(id){
   document.getElementById('f_unitCost').value = job?.unitCost ?? '';
   document.getElementById('f_cost').value = job?.cost ?? '';
   document.getElementById('f_payout').value = job?.driverPayout ?? '';
+  document.getElementById('f_coyFund').value = job?.coyFund ?? '';
+  const expectedCoyFund = (Number(job?.cost)||0) - (Number(job?.driverPayout)||0);
+  coyFundEdited = !!job && Math.abs((Number(job.coyFund)||0) - expectedCoyFund) > 0.005;
   document.getElementById('f_status').value = (job?.paymentStatus || 'UNPAID').toUpperCase();
   document.getElementById('f_remarks').value = job?.remarks || '';
   toggleQtyHint();
