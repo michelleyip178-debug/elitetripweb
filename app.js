@@ -1137,10 +1137,14 @@ function applyOptionRate(row){
 function fmtOptionLabel(o){
   return o.note ? `${o.optionType||''} — ${o.note}` : (o.optionType||'');
 }
+// MISCELLANEOUS and ADDITIONAL STOP (any variant) both take a free-text
+// description, since neither is specific enough on its own.
+function optionTypeNeedsNote(v){
+  return v === 'MISCELLANEOUS' || v === '杂项' || /^ADDITIONAL STOP/i.test(v||'');
+}
 function updateOptionNoteVisibility(row){
   const noteEl = row.querySelector('.optionNote');
-  const v = row.querySelector('.optionType').value;
-  noteEl.style.display = (v === 'MISCELLANEOUS' || v === '杂项') ? '' : 'none';
+  noteEl.style.display = optionTypeNeedsNote(row.querySelector('.optionType').value) ? '' : 'none';
 }
 // Additional Options pool includes both the built-in list and custom rates
 // (so newly added Chinese types are selectable here too), filtered to

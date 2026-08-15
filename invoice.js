@@ -133,7 +133,7 @@ async function init(){
       subtotal += cost;
       const addonRows = optionsByJob(j.id).map(o=>{
         subtotal += Number(o.amount)||0;
-        return `<tr><td></td><td>${escHtml(o.optionType||'')}</td><td></td><td class="num">1</td><td class="num">${fmtMoney(o.amount)}</td><td class="num">${fmtMoney(o.amount)}</td></tr>`;
+        return `<tr><td></td><td>${escHtml(o.optionType||'')}</td><td>${escHtml(o.note||'')}</td><td class="num">1</td><td class="num">${fmtMoney(o.amount)}</td><td class="num">${fmtMoney(o.amount)}</td></tr>`;
       }).join('');
       return `<tr>
         <td>${j.date ? toDMY(j.date) : ''}</td>
