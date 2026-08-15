@@ -447,7 +447,7 @@ function renderJobs(){
       <td>${j.startTime||''}</td>
       <td>${j.endTime||''}</td>
       <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
-      <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
+      <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
       <td class="num">${fmtMoney(j.coyFund)}</td>
@@ -463,7 +463,7 @@ function renderJobs(){
       <td>${j.startTime||''}</td>
       <td>${j.endTime||''}</td>
       <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
-      <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
+      <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
       <td class="num">${fmtMoney(j.coyFund)}</td>
@@ -552,7 +552,7 @@ function renderInvoices(){
       <td>${j.driver||''}</td>
       <td>${j.jobType||''}</td>
       <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
-      <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
+      <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${j.qty ?? ''}</td>
       <td class="num">${fmtMoney(j.unitCost)}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
@@ -567,7 +567,7 @@ function renderInvoices(){
       <td>${j.driver||''}</td>
       <td>${o.optionType||''}</td>
       <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
-      <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
+      <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">1</td>
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
@@ -660,6 +660,20 @@ function extractRoute(text){
 function extractPax(text){
   const m = (text||'').match(/^\s*PAX\s*:\s*(.+)$/im);
   return m ? m[1].trim() : null;
+}
+// ELITE jobs don't carry Host/UID/Cost Centre, so their Trip Details cell just
+// shows Itinerary, PAX, and Driver instead of the full MAERSK-style detail block.
+function renderTripDetailsCell(j){
+  if(WORKSPACE === 'nonmaersk'){
+    const itinerary = extractRoute(j.details);
+    const pax = extractPax(j.details);
+    const lines = [];
+    if(itinerary) lines.push(escHtml(itinerary));
+    if(pax) lines.push(`PAX: ${escHtml(pax)}`);
+    if(j.driver) lines.push(`DRIVER: ${escHtml(j.driver)}`);
+    return lines.length ? `<div class="small" style="white-space:pre-line;">${lines.join('\n')}</div>` : '';
+  }
+  return j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : '';
 }
 function csvField(v){
   v = v==null ? '' : String(v);
