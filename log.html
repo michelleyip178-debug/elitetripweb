@@ -273,6 +273,7 @@ function findClientByHost(hostName){
 document.getElementById('f_host').addEventListener('change', (e)=>{
   const c = findClientByHost(e.target.value);
   document.getElementById('f_costCentre').value = c?.costCentre || '';
+  refreshJobTypeOptions();
 });
 
 // PAX stepper: tap +/- to adjust, 0 = unset ("—").
@@ -386,12 +387,30 @@ function setDate(prefix, value){
 // Job Type dropdown includes both the built-in JOB_TYPES list and any custom
 // types added via the dashboard's Job Types & Rates tab.
 fillSelect(document.getElementById('f_jobType'), JOB_TYPES, '— select job type —');
-async function loadJobTypes(){
+function hasChineseText(s){
+  return /[一-鿿]/.test(s||'');
+}
+// Sharon's trips are Chinese-language tour groups — default the Job Type
+// dropdown to Chinese-named types for her (falls back to the full list if
+// none exist yet, so the dropdown is never left empty).
+function filterJobTypesForHost(types, hostName){
+  if((hostName||'').trim().toUpperCase() !== 'SHARON') return types;
+  const chinese = types.filter(hasChineseText);
+  return chinese.length ? chinese : types;
+}
+let ALL_JOB_TYPES = JOB_TYPES.slice();
+function refreshJobTypeOptions(){
   const sel = document.getElementById('f_jobType');
+  const current = sel.value;
+  fillSelect(sel, filterJobTypesForHost(ALL_JOB_TYPES, document.getElementById('f_host').value), '— select job type —');
+  sel.value = current;
+}
+async function loadJobTypes(){
   const {data} = await sb.from(TBL.rates).select('jobType, unitPrice');
   CUSTOM_RATES = data || [];
   const custom = CUSTOM_RATES.map(r=>r.jobType).filter(Boolean);
-  fillSelect(sel, [...new Set([...JOB_TYPES, ...custom])], '— select job type —');
+  ALL_JOB_TYPES = [...new Set([...JOB_TYPES, ...custom])];
+  refreshJobTypeOptions();
 }
 loadJobTypes();
 loadDrivers();

@@ -1050,11 +1050,22 @@ function fillSelect(sel, values, placeholder){
 function allJobTypes(){
   return [...new Set([...JOB_TYPES, ...DATA.rates.map(r=>r.jobType).filter(Boolean)])];
 }
-function setupModalOptions(currentDriverName){
+function hasChineseText(s){
+  return /[一-鿿]/.test(s||'');
+}
+// Sharon's trips are Chinese-language tour groups — default the Job Type
+// dropdown to Chinese-named types for her (falls back to the full list if
+// none exist yet, so the dropdown is never left empty).
+function filterJobTypesForHost(types, hostName){
+  if((hostName||'').trim().toUpperCase() !== 'SHARON') return types;
+  const chinese = types.filter(hasChineseText);
+  return chinese.length ? chinese : types;
+}
+function setupModalOptions(currentDriverName, currentHostName){
   const driverNames = DATA.drivers.filter(d=>d.active !== false).map(d=>d.name);
   if(currentDriverName && !driverNames.includes(currentDriverName)) driverNames.push(currentDriverName);
   fillSelect(document.getElementById('f_driver'), driverNames, '— select driver —');
-  fillSelect(document.getElementById('f_jobType'), allJobTypes(), '— select job type —');
+  fillSelect(document.getElementById('f_jobType'), filterJobTypesForHost(allJobTypes(), currentHostName), '— select job type —');
   fillSelect(document.getElementById('f_client'), DATA.clients.map(c=>c.hostName), '— select or leave blank —');
 }
 
@@ -1065,6 +1076,10 @@ document.getElementById('f_client').addEventListener('change', (e)=>{
     document.getElementById('f_costCentre').value = c.costCentre||'';
     document.getElementById('f_uid').value = c.uid||'';
   }
+  const jobTypeSel = document.getElementById('f_jobType');
+  const current = jobTypeSel.value;
+  fillSelect(jobTypeSel, filterJobTypesForHost(allJobTypes(), e.target.value), '— select job type —');
+  jobTypeSel.value = current;
 });
 
 // Additional Options: a repeatable list where each row picks one of the
@@ -1230,7 +1245,7 @@ async function openJobModal(id){
   const job = id ? DATA.jobs.find(j=>j.id===id) : null;
   document.getElementById('jobModalTitle').textContent = job ? 'Edit Job' : 'New Job';
   document.getElementById('deleteJobBtn').style.display = job ? '' : 'none';
-  setupModalOptions(job?.driver);
+  setupModalOptions(job?.driver, job?.hostName);
 
   setDate('f_date', job?.date || '');
   document.getElementById('f_invoice').value = job?.invoice || '';
