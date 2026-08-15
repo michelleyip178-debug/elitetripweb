@@ -59,3 +59,20 @@ const NONMAERSK_RATE_MAP = JSON.parse(JSON.stringify(MAERSK_RATE_MAP));
 
 const RATE_MAP_BY_WORKSPACE = { maersk: MAERSK_RATE_MAP, nonmaersk: NONMAERSK_RATE_MAP };
 const RATE_MAP = RATE_MAP_BY_WORKSPACE[WORKSPACE];
+
+// Used by invoice.html for the invoice letterhead, matching the format of the
+// original "MAERSK LOG SG MINV..." PDF invoices.
+const COMPANY_LETTERHEAD = {
+  name: 'Elite Skyline Limousine',
+  addressLines: ['22 Sin Ming Lane #06-76 Midview City', 'Singapore 573969'],
+  phone: '+6581555858',
+  email: 'eliteskylinelimo@gmail.com',
+  website: 'https://eliteskylinelimo.sg',
+  regNo: '53472658E',
+  paymentMethods: [
+    'DBS Bank Account : 072-106011-6 (SGD)',
+    'PayNow UEN : 53472658E',
+  ],
+  // Logo image from the original PDF invoices — drop the file in as assets/logo.png.
+  logoUrl: 'assets/logo.png',
+};

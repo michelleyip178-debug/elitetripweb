@@ -114,7 +114,7 @@
       <span class="small muted" id="invCount"></span>
       <button class="btn secondary" id="invoicesClearSortBtn">Clear Sort</button>
       <button class="btn secondary" id="autoAssignBtn">Auto-Assign Invoice #s</button>
-      <button class="btn" id="exportInvoicesBtn">Export to QuickBooks (0)</button>
+      <button class="btn" id="generateInvoiceBtn">Generate Invoice</button>
     </div>
     <div class="panel" style="overflow:auto;max-height:75vh;">
       <table id="invoicesTable">
@@ -206,7 +206,7 @@
     <div class="cards" id="maerskCards"></div>
     <div class="panel" style="overflow:auto;max-height:75vh;">
       <table id="maerskTable">
-        <thead><tr><th>Date</th><th>Invoice #</th><th>Driver</th><th>Job Type</th><th>Host</th><th>UID</th><th>Cost Centre</th><th>Trip Details</th><th class="num">Qty</th><th class="num">Unit Cost</th><th class="num">Cost</th><th class="num">Payout</th><th class="num">Coy Fund</th><th>Status</th></tr></thead>
+        <thead><tr><th>Date</th><th>Invoice #</th><th>Driver</th><th>Job Type</th><th>Host</th><th>UID</th><th>Cost Centre</th><th>Trip Details</th><th class="num">Qty</th><th class="num">Unit Cost</th><th class="num">Cost</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -309,6 +309,8 @@
       <div><label>Cost Centre</label><input type="text" id="c_costCentre"></div>
       <div><label>Company</label><input type="text" id="c_company"></div>
       <div><label>Code</label><input type="text" id="c_code"></div>
+      <div class="full"><label>Billing Address</label><textarea id="c_billingAddress" rows="2" placeholder="Registered address for invoicing"></textarea></div>
+      <div><label>UEN</label><input type="text" id="c_uen"></div>
     </div>
     <div class="form-actions">
       <button class="btn danger" id="deleteClientBtn" style="display:none;margin-right:auto;">Delete</button>
