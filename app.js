@@ -102,8 +102,9 @@ function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').r
 const PAGE_SIZE = 10;
 const pageState = {};
 // Job Log & Invoices adjust their page size to fit the panel height (no
-// scrolling needed to see a full page); other views use the fixed PAGE_SIZE.
-const DYNAMIC_PAGE_SIZE = { jobs: PAGE_SIZE, invoices: PAGE_SIZE };
+// scrolling needed to see a full page), capped at PAGE_SIZE; Drivers/Clients/
+// Job Types & Rates use a larger fixed size since their rows are single-line.
+const DYNAMIC_PAGE_SIZE = { jobs: PAGE_SIZE, invoices: PAGE_SIZE, drivers: 20, clients: 20, rates: 20 };
 function paginate(key, items){
   const size = DYNAMIC_PAGE_SIZE[key] || PAGE_SIZE;
   const totalPages = Math.max(1, Math.ceil(items.length / size));
