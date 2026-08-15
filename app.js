@@ -731,6 +731,20 @@ function csvField(v){
   if(/[",\n]/.test(v)) return '"'+v.replace(/"/g,'""')+'"';
   return v;
 }
+document.getElementById('markPaidBtn').addEventListener('click', async ()=>{
+  if(selectedInvoices.size===0){ alert('Select at least one invoice to mark as paid.'); return; }
+  const invNums = [...selectedInvoices];
+  const jobs = DATA.jobs.filter(j=>invNums.includes(j.invoice));
+  if(jobs.length===0){ alert('No jobs found for the selected invoice(s).'); return; }
+  if(!confirm(`Mark ${jobs.length} job(s) across ${invNums.length} invoice(s) as PAID?`)) return;
+
+  const ids = jobs.map(j=>j.id);
+  const {error} = await sb.from(TBL.jobs).update({paymentStatus:'PAID'}).in('id', ids);
+  if(error){ alert('Failed to mark as paid: '+error.message); return; }
+  jobs.forEach(j=>{ j.paymentStatus = 'PAID'; });
+  renderAll();
+  alert(`Marked ${jobs.length} job(s) as PAID.`);
+});
 document.getElementById('generateInvoiceBtn').addEventListener('click', ()=>{
   if(selectedInvoices.size===0){ alert('Select at least one invoice to generate.'); return; }
   const params = new URLSearchParams({ ws: WORKSPACE, inv: [...selectedInvoices].join(',') });
