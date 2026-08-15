@@ -29,6 +29,7 @@
   td.details-cell{white-space:normal;min-width:280px;}
   td.jobtype-cell{white-space:normal;min-width:160px;}
   td.driver-cell,td.host-cell{white-space:normal;max-width:120px;}
+  td.host-cell .small.muted{white-space:normal;}
   th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.02em;position:sticky;top:0;background:var(--panel);z-index:5;will-change:transform;transform:translateZ(0);}
   tr:hover td{background:#fafbfc;}
   th.sortable{cursor:pointer;user-select:none;white-space:nowrap;}
