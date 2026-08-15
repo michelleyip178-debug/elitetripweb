@@ -473,11 +473,11 @@ function renderJobs(_skipFit){
     <tr>
       <td>${fmtDate(j.date)}</td>
       <td>${j.invoice||''}</td>
-      <td>${j.driver||''}</td>
+      <td class="driver-cell">${j.driver||''}</td>
       <td class="jobtype-cell">${j.jobType||''}</td>
       <td>${j.startTime||''}</td>
       <td>${j.endTime||''}</td>
-      <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
+      <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
@@ -489,11 +489,11 @@ function renderJobs(_skipFit){
     <tr>
       <td>${fmtDate(j.date)}</td>
       <td>${j.invoice||''}</td>
-      <td>${j.driver||''}</td>
+      <td class="driver-cell">${j.driver||''}</td>
       <td class="jobtype-cell">${o.optionType||''}</td>
       <td>${j.startTime||''}</td>
       <td>${j.endTime||''}</td>
-      <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
+      <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
@@ -590,9 +590,9 @@ function renderInvoices(_skipFit){
       <td>${exportable ? `<input type="checkbox" class="inv-check" data-inv="${encodeURIComponent(inv)}" ${checked}>` : ''}</td>
       <td>${fmtDate(j.date)}</td>
       <td>${inv}</td>
-      <td>${j.driver||''}</td>
+      <td class="driver-cell">${j.driver||''}</td>
       <td class="jobtype-cell">${j.jobType||''}</td>
-      <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
+      <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${j.qty ?? ''}</td>
       <td class="num">${fmtMoney(j.unitCost)}</td>
@@ -605,9 +605,9 @@ function renderInvoices(_skipFit){
       <td></td>
       <td>${fmtDate(j.date)}</td>
       <td>${inv}</td>
-      <td>${j.driver||''}</td>
+      <td class="driver-cell">${j.driver||''}</td>
       <td class="jobtype-cell">${o.optionType||''}</td>
-      <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
+      <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">1</td>
       <td class="num">${fmtMoney(o.amount)}</td>
@@ -1366,9 +1366,9 @@ function renderMaerskSummary(){
     <tr>
       <td>${fmtDate(j.date)}</td>
       <td>${j.invoice||''}</td>
-      <td>${j.driver||''}</td>
+      <td class="driver-cell">${j.driver||''}</td>
       <td class="jobtype-cell">${j.jobType||''}</td>
-      <td>${j.hostName||''}</td>
+      <td class="host-cell">${j.hostName||''}</td>
       <td>${j.uid||''}</td>
       <td>${j.costCentre||''}</td>
       <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
