@@ -195,10 +195,11 @@
       </div>
     </div>
 
-    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel,#fff);border:1px solid var(--line,#e3e6ec);border-radius:10px;padding:14px 16px;margin:10px 0 16px;">
-      <span style="font-size:12px;color:var(--muted);">Total Cost</span>
-      <span id="totalDisplay" style="font-size:22px;font-weight:700;">S$0.00</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel,#fff);border:1px solid var(--line,#e3e6ec);border-radius:10px;padding:14px 16px;margin:10px 0 6px;">
+      <span style="font-size:12px;color:var(--muted);">Total Cost (S$)</span>
+      <input type="number" id="totalDisplay" step="any" style="font-size:22px;font-weight:700;width:120px;text-align:right;border:none;background:transparent;padding:0;">
     </div>
+    <div style="font-size:12px;color:var(--muted);margin:0 0 16px;" id="costHint">Defaults to Qty × Unit Cost + Additional Options; editable to override</div>
 
     <div class="field">
       <label>Remarks</label>
@@ -444,13 +445,23 @@ function addOptionRow(optionType, amount, note){
 }
 document.getElementById('addOptionBtn').addEventListener('click', ()=>addOptionRow('',''));
 
+// ELITE lets drivers/staff override Total Cost directly, same pattern as
+// Unit Cost; MAERSK keeps it strictly derived (readonly, set below).
+let costEdited = false;
 function updateTotal(){
   const qty = Number(document.getElementById('f_qty').value)||0;
   const unitCost = Number(document.getElementById('f_unitCost').value)||0;
-  const total = qty*unitCost + sumExtras();
-  document.getElementById('totalDisplay').textContent = 'S$' + total.toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const computedTotal = qty*unitCost + sumExtras();
+  if(!(WORKSPACE === 'nonmaersk' && costEdited)) document.getElementById('totalDisplay').value = computedTotal || '';
 }
 ['f_qty','f_unitCost'].forEach(id=>document.getElementById(id).addEventListener('input', updateTotal));
+document.getElementById('totalDisplay').addEventListener('input', ()=>{
+  if(WORKSPACE === 'nonmaersk') costEdited = true;
+});
+if(WORKSPACE !== 'nonmaersk'){
+  document.getElementById('totalDisplay').readOnly = true;
+  document.getElementById('costHint').textContent = 'Qty × Unit Cost + Additional Options';
+}
 
 async function loadDrivers(){
   const {data} = await sb.from(TBL.drivers).select('name, active').eq('active', true).order('name');
@@ -624,6 +635,10 @@ async function openEdit(id){
   document.getElementById('optionsList').innerHTML = '';
   const {data: options} = await sb.from(TBL.job_options).select('*').eq('job_id', id).order('id');
   (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount, o.note));
+  {
+    const computedCost = (Number(job.qty)||0)*(Number(job.unitCost)||0) + sumExtras();
+    costEdited = Math.abs((Number(job.cost)||0) - computedCost) > 0.005;
+  }
   updateTotal();
 
   showEdit();
@@ -713,7 +728,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     uid, costCentre, company,
     details: lines.join('\n'),
     startTime: startTime||null, endTime: endTime||null,
-    qty, unitCost, cost: qty*unitCost + sumExtras(),
+    qty, unitCost, cost: Number(document.getElementById('totalDisplay').value)||0,
     remarks,
   };
 

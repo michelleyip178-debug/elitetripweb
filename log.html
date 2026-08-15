@@ -162,9 +162,10 @@
   </div>
 
   <div class="costRow">
-    <span class="hint" style="margin:0;">Total Cost</span>
-    <span class="amount" id="totalDisplay">S$0.00</span>
+    <span class="hint" style="margin:0;">Total Cost (S$)</span>
+    <input type="number" id="totalDisplay" step="any" class="amount" style="width:120px;text-align:right;border:none;background:transparent;padding:0;">
   </div>
+  <div class="hint" id="costHint" style="margin:-12px 0 16px;">Defaults to Qty × Unit Cost + Additional Options; editable to override</div>
 
   <div class="field">
     <label>Remarks (optional)</label>
@@ -516,13 +517,23 @@ function addOptionRow(optionType, amount, note){
 }
 document.getElementById('addOptionBtn').addEventListener('click', ()=>addOptionRow('',''));
 
+// ELITE lets drivers/staff override Total Cost directly, same pattern as
+// Unit Cost; MAERSK keeps it strictly derived (readonly, set below).
+let costEdited = false;
 function updateTotal(){
   const qty = Number(document.getElementById('f_qty').value)||0;
   const unitCost = Number(document.getElementById('f_unitCost').value)||0;
-  const total = qty*unitCost + sumExtras();
-  document.getElementById('totalDisplay').textContent = 'S$' + total.toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const computedTotal = qty*unitCost + sumExtras();
+  if(!(WORKSPACE === 'nonmaersk' && costEdited)) document.getElementById('totalDisplay').value = computedTotal || '';
 }
 ['f_qty','f_unitCost'].forEach(id=>document.getElementById(id).addEventListener('input', updateTotal));
+document.getElementById('totalDisplay').addEventListener('input', ()=>{
+  if(WORKSPACE === 'nonmaersk') costEdited = true;
+});
+if(WORKSPACE !== 'nonmaersk'){
+  document.getElementById('totalDisplay').readOnly = true;
+  document.getElementById('costHint').textContent = 'Qty × Unit Cost + Additional Options';
+}
 
 function showMsg(text, type){
   const el = document.getElementById('msg');
@@ -575,7 +586,7 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
     hostName, uid, costCentre, company,
     details: lines.join('\n'),
     startTime: startTime||null, endTime: endTime||null,
-    qty, unitCost, cost: qty*unitCost + sumExtras(),
+    qty, unitCost, cost: Number(document.getElementById('totalDisplay').value)||0,
     driverPayout: null, coyFund: null,
     paymentStatus: 'UNPAID',
     remarks,
@@ -616,6 +627,7 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
   refreshVehicleField('');
   setUnitCostHint(false);
   document.getElementById('qtyHint').style.display = 'none';
+  costEdited = false;
   updateTotal();
   window.scrollTo({top:0, behavior:'smooth'});
 });

@@ -17,6 +17,11 @@ if(WORKSPACE === 'nonmaersk'){
   // Payout to Alan is a manual field specific to ELITE jobs.
   const el = document.getElementById('payoutAlanFieldWrap');
   if(el) el.style.display = 'none';
+  // Total Cost is only overridable for ELITE — keep it strictly derived for MAERSK.
+  const costEl = document.getElementById('f_cost');
+  if(costEl){ costEl.readOnly = true; costEl.style.background = '#f5f6f8'; }
+  const costHint = document.getElementById('costHint');
+  if(costHint) costHint.textContent = 'Qty × Unit Cost + Additional Options';
 }
 // .payoutAlan-col (th and dynamically-rendered td cells alike) is hidden by
 // default in CSS and only shown for ELITE via this body class.
@@ -1152,16 +1157,24 @@ document.getElementById('addOptionBtn').addEventListener('click', ()=>addOptionR
 // Company Fund defaults to Total Cost − Driver Payout, but is editable —
 // once the user types into it directly, stop overwriting their value.
 let coyFundEdited = false;
+// ELITE lets staff override Total Cost directly, same pattern as Unit Cost
+// and Company Fund; MAERSK keeps it strictly derived (Qty × Unit Cost + Options).
+let costEdited = false;
 function recalc(){
   const qty = Number(document.getElementById('f_qty').value)||0;
   const unitCost = Number(document.getElementById('f_unitCost').value)||0;
-  const cost = qty*unitCost + sumExtras();
-  document.getElementById('f_cost').value = cost || '';
+  const computedCost = qty*unitCost + sumExtras();
+  if(!(WORKSPACE === 'nonmaersk' && costEdited)) document.getElementById('f_cost').value = computedCost || '';
+  const cost = Number(document.getElementById('f_cost').value)||0;
 
   const payout = Number(document.getElementById('f_payout').value)||0;
   if(!coyFundEdited) document.getElementById('f_coyFund').value = cost ? (cost - payout).toFixed(2) : '';
 }
 ['f_qty','f_unitCost','f_payout'].forEach(id=>document.getElementById(id).addEventListener('input', recalc));
+document.getElementById('f_cost').addEventListener('input', ()=>{
+  if(WORKSPACE === 'nonmaersk') costEdited = true;
+  recalc();
+});
 document.getElementById('f_coyFund').addEventListener('input', ()=>{ coyFundEdited = true; });
 
 // For HOURLY job types, derive Qty from Start/End time (billed in whole-hour blocks, rounded up)
@@ -1295,6 +1308,10 @@ async function openJobModal(id){
   if(id){
     const {data: options} = await sb.from(TBL.job_options).select('*').eq('job_id', id).order('id');
     (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount, o.note));
+  }
+  {
+    const computedCost = (Number(job?.qty)||0)*(Number(job?.unitCost)||0) + sumExtras();
+    costEdited = !!job && Math.abs((Number(job.cost)||0) - computedCost) > 0.005;
   }
   recalc();
 
