@@ -102,9 +102,9 @@ function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').r
 const PAGE_SIZE = 10;
 const pageState = {};
 // Job Log & Invoices adjust their page size to fit the panel height (no
-// scrolling needed to see a full page), capped at PAGE_SIZE; every other
-// view (Drivers, Clients, Job Types & Rates) uses the fixed PAGE_SIZE too.
-const DYNAMIC_PAGE_SIZE = { jobs: PAGE_SIZE, invoices: PAGE_SIZE };
+// scrolling needed to see a full page), capped at PAGE_SIZE; Drivers/Clients
+// use the fixed PAGE_SIZE too; Job Types & Rates gets a larger fixed size.
+const DYNAMIC_PAGE_SIZE = { jobs: PAGE_SIZE, invoices: PAGE_SIZE, rates: 20, ratesChinese: 20 };
 function paginate(key, items){
   const size = DYNAMIC_PAGE_SIZE[key] || PAGE_SIZE;
   const totalPages = Math.max(1, Math.ceil(items.length / size));
@@ -975,18 +975,30 @@ document.getElementById('deleteClientBtn').addEventListener('click', async ()=>{
 });
 
 // ---------- Job types / rates ----------
+function renderRateRows(tbodySel, paginationId, pageKey, rows){
+  const {items:pageRows, page, totalPages} = paginate(pageKey, rows);
+  document.querySelector(tbodySel).innerHTML = pageRows.length ? pageRows.map(r=>`
+    <tr><td>${r.jobType}</td><td class="num">${r.unitPrice}</td><td>${r.billingUnit||''}</td>
+    <td class="row-actions"><button onclick="openRateModal(${r.id})">Edit</button></td></tr>
+  `).join('') : `<tr><td colspan="4" class="empty">No job types found</td></tr>`;
+  renderPagination(paginationId, pageKey, page, totalPages, renderRates);
+}
 function renderRates(){
   const search = document.getElementById('fRatesSearch').value.toLowerCase();
   let rows = DATA.rates.slice();
   if(search){
     rows = rows.filter(r=>(r.jobType||'').toLowerCase().includes(search));
   }
-  const {items:pageRows, page, totalPages} = paginate('rates', rows);
-  document.querySelector('#ratesTable tbody').innerHTML = pageRows.length ? pageRows.map(r=>`
-    <tr><td>${r.jobType}</td><td class="num">${r.unitPrice}</td><td>${r.billingUnit||''}</td>
-    <td class="row-actions"><button onclick="openRateModal(${r.id})">Edit</button></td></tr>
-  `).join('') : `<tr><td colspan="4" class="empty">No job types found</td></tr>`;
-  renderPagination('ratesPagination', 'rates', page, totalPages, renderRates);
+  if(WORKSPACE === 'nonmaersk'){
+    document.getElementById('ratesChineseSection').style.display = '';
+    const chineseRows = rows.filter(r=>hasChineseText(r.jobType));
+    const otherRows = rows.filter(r=>!hasChineseText(r.jobType));
+    renderRateRows('#ratesChineseTable tbody', 'ratesChinesePagination', 'ratesChinese', chineseRows);
+    renderRateRows('#ratesTable tbody', 'ratesPagination', 'rates', otherRows);
+  } else {
+    document.getElementById('ratesChineseSection').style.display = 'none';
+    renderRateRows('#ratesTable tbody', 'ratesPagination', 'rates', rows);
+  }
 }
 document.getElementById('fRatesSearch').addEventListener('input', ()=>{ pageState.rates=1; renderRates(); });
 
