@@ -510,7 +510,7 @@ function renderJobs(_skipFit){
       <td class="time-col">${j.startTime||''}</td>
       <td class="time-col">${j.endTime||''}</td>
       <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
-      <td class="details-cell">${renderTripDetailsCell(j)}</td>
+      <td class="details-cell">${renderOptionDetailsCell(j, o)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
       <td class="num fit-col">${fmtMoney(j.coyFund)}</td>
@@ -626,7 +626,7 @@ function renderInvoices(_skipFit){
       <td class="driver-cell">${j.driver||''}</td>
       <td class="jobtype-cell">${fmtOptionLabel(o)}</td>
       <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
-      <td class="details-cell">${renderTripDetailsCell(j)}</td>
+      <td class="details-cell">${renderOptionDetailsCell(j, o)}</td>
       <td class="num">1</td>
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
@@ -756,6 +756,15 @@ function renderTripDetailsCell(j){
     return lines.length ? `<div class="small" style="white-space:pre-line;">${lines.join('\n')}</div>` : '';
   }
   return j.details ? `<div class="small" style="white-space:pre-line;">${escHtml(j.details)}</div>` : '';
+}
+// For an ADDITIONAL STOP option row, its own description replaces the
+// parent job's Trip Details in that row — the stop's location, not the
+// whole trip, is what belongs there.
+function renderOptionDetailsCell(j, o){
+  if(/^ADDITIONAL STOP/i.test(o.optionType||'') && o.note){
+    return `<div class="small" style="white-space:pre-line;">${escHtml(o.note)}</div>`;
+  }
+  return renderTripDetailsCell(j);
 }
 function csvField(v){
   v = v==null ? '' : String(v);
