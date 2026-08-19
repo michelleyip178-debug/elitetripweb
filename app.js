@@ -687,9 +687,10 @@ document.getElementById('invSelectAll').addEventListener('change', e=>{
 // Rule: MAERSK SINGAPORE PTE LTD bills all trips for a calendar month on one invoice.
 // Every other company gets one invoice per date.
 const MAERSK_MONTHLY_COMPANY = 'MAERSK SINGAPORE PTE LTD';
+const INVOICE_PREFIX = WORKSPACE === 'nonmaersk' ? 'EINV' : 'MINV';
 function nextInvoiceSeqForMonth(yyyymm){
   let max = 0;
-  const re = new RegExp('^MINV'+yyyymm+'(\\d{4})');
+  const re = new RegExp('^'+INVOICE_PREFIX+yyyymm+'(\\d{4})');
   DATA.jobs.forEach(j=>{
     if(j.invoice){
       const m = j.invoice.match(re);
@@ -697,6 +698,15 @@ function nextInvoiceSeqForMonth(yyyymm){
     }
   });
   return max+1;
+}
+// What invoice # this job would get if freshly auto-assigned — used to
+// suggest a number when the user types one that's already in use elsewhere.
+function suggestInvoiceFor(job){
+  if(!job.date) return null;
+  const [y,m] = job.date.split('-');
+  const yyyymm = y+m;
+  const seq = nextInvoiceSeqForMonth(yyyymm);
+  return `${INVOICE_PREFIX}${yyyymm}${String(seq).padStart(4,'0')}`;
 }
 async function autoAssignInvoiceNumbers(){
   const ungrouped = DATA.jobs.filter(j=>!j.invoice && j.date);
@@ -716,7 +726,7 @@ async function autoAssignInvoiceNumbers(){
   const assignments = Object.values(groups).map(g=>{
     if(seqByMonth[g.yyyymm] == null) seqByMonth[g.yyyymm] = nextInvoiceSeqForMonth(g.yyyymm);
     const seq = seqByMonth[g.yyyymm]++;
-    return { invNum: `MINV${g.yyyymm}${String(seq).padStart(4,'0')}`, jobs: g.jobs };
+    return { invNum: `${INVOICE_PREFIX}${g.yyyymm}${String(seq).padStart(4,'0')}`, jobs: g.jobs };
   });
 
   const skipped = DATA.jobs.filter(j=>!j.invoice && !j.date).length;
@@ -1442,6 +1452,18 @@ document.getElementById('saveJobBtn').addEventListener('click', async ()=>{
   };
   if(WORKSPACE === 'nonmaersk') job.payoutAlan = Number(document.getElementById('f_payoutAlan').value)||0;
   if(!job.date){ alert('Please set a date.'); return; }
+  if(job.invoice){
+    const conflict = DATA.jobs.find(j =>
+      j.invoice === job.invoice && j.id !== editingId &&
+      (j.company||'').trim().toUpperCase() !== (job.company||'').trim().toUpperCase()
+    );
+    if(conflict){
+      const suggestion = suggestInvoiceFor(job);
+      alert(`Invoice # "${job.invoice}" is already used by ${conflict.company || conflict.hostName || 'a different company'} — using it here would mix two companies onto one invoice.`
+        + (suggestion ? `\n\nNext available invoice #: ${suggestion}` : ''));
+      return;
+    }
+  }
   if(editingId){
     job.id = editingId;
     const {error} = await sb.from(TBL.jobs).update(job).eq('id', editingId);
