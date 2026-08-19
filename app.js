@@ -270,13 +270,14 @@ document.querySelectorAll('nav button').forEach(btn=>{
 let dashFiltersDefaulted = false;
 function populateDashFilterOptions(){
   const fYear = document.getElementById('fDashYear');
-  const years = [...new Set(DATA.jobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)))].sort();
+  const currentYear = String(new Date().getFullYear());
+  const years = [...new Set([...DATA.jobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)), currentYear])].sort();
   if(fYear.options.length<=1){
     years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
   }
-  if(!dashFiltersDefaulted && DATA.jobs.length){
-    const latestDate = DATA.jobs.map(j=>j.date).filter(Boolean).sort().slice(-1)[0];
-    if(latestDate) fYear.value = latestDate.slice(0,4);
+  // Default to the current real-world year, once per page load.
+  if(!dashFiltersDefaulted){
+    fYear.value = currentYear;
     dashFiltersDefaulted = true;
   }
 }
@@ -341,10 +342,10 @@ function populateFilterOptions(){
     DATA.drivers.map(d=>d.name).sort().forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;fDriver.appendChild(o);});
   }
 
-  // Default the view to the latest month present in the data, once.
-  if(!jobFiltersDefaulted && DATA.jobs.length){
-    const latestDate = DATA.jobs.map(j=>j.date).filter(Boolean).sort().slice(-1)[0];
-    if(latestDate) fMonth.value = monthKey(latestDate);
+  // Default the view to the current real-world month, once per page load —
+  // not the latest month with data, so it doesn't get stuck on an old month.
+  if(!jobFiltersDefaulted){
+    fMonth.value = MONTHS[new Date().getMonth()];
     jobFiltersDefaulted = true;
   }
 }
@@ -496,7 +497,8 @@ const selectedInvoices = new Set();
 let invoiceFiltersDefaulted = false;
 function populateInvoiceFilterOptions(){
   const fYear = document.getElementById('fInvYear');
-  const years = [...new Set(DATA.jobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)))].sort();
+  const currentYear = String(new Date().getFullYear());
+  const years = [...new Set([...DATA.jobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)), currentYear])].sort();
   if(fYear.options.length<=1){
     years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
   }
@@ -505,13 +507,11 @@ function populateInvoiceFilterOptions(){
     MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;fMonth.appendChild(o);});
   }
 
-  // Default the view to the latest month present in the data, once.
-  if(!invoiceFiltersDefaulted && DATA.jobs.length){
-    const latestDate = DATA.jobs.map(j=>j.date).filter(Boolean).sort().slice(-1)[0];
-    if(latestDate){
-      fYear.value = latestDate.slice(0,4);
-      fMonth.value = latestDate.slice(5,7);
-    }
+  // Default the view to the current real-world month, once per page load —
+  // not the latest month with data, so it doesn't get stuck on an old month.
+  if(!invoiceFiltersDefaulted){
+    fYear.value = currentYear;
+    fMonth.value = String(new Date().getMonth()+1).padStart(2,'0');
     invoiceFiltersDefaulted = true;
   }
 
@@ -1490,7 +1490,8 @@ function getMaerskJobs(){
 function populateMaerskFilterOptions(){
   const maerskJobs = getMaerskJobs();
   const fYear = document.getElementById('fMaerskYear');
-  const years = [...new Set(maerskJobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)))].sort();
+  const currentYear = String(new Date().getFullYear());
+  const years = [...new Set([...maerskJobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)), currentYear])].sort();
   if(fYear.options.length<=1){
     years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
   }
@@ -1498,12 +1499,11 @@ function populateMaerskFilterOptions(){
   if(fMonth.options.length<=1){
     MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;fMonth.appendChild(o);});
   }
-  if(!maerskFiltersDefaulted && maerskJobs.length){
-    const latestDate = maerskJobs.map(j=>j.date).filter(Boolean).sort().slice(-1)[0];
-    if(latestDate){
-      fYear.value = latestDate.slice(0,4);
-      fMonth.value = latestDate.slice(5,7);
-    }
+  // Default the view to the current real-world month, once per page load —
+  // not the latest month with data, so it doesn't get stuck on an old month.
+  if(!maerskFiltersDefaulted){
+    fYear.value = currentYear;
+    fMonth.value = String(new Date().getMonth()+1).padStart(2,'0');
     maerskFiltersDefaulted = true;
   }
 }
