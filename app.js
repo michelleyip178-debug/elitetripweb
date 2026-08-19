@@ -111,6 +111,10 @@ const pageState = {};
 // paginated view uses the fixed PAGE_SIZE too.
 const DYNAMIC_PAGE_SIZE = { jobs: PAGE_SIZE, invoices: PAGE_SIZE };
 function paginate(key, items){
+  // ELITE Job Log shows every row at once — no pagination.
+  if(key === 'jobs' && WORKSPACE === 'nonmaersk'){
+    return { items, page: 1, totalPages: 1 };
+  }
   const size = DYNAMIC_PAGE_SIZE[key] || PAGE_SIZE;
   const totalPages = Math.max(1, Math.ceil(items.length / size));
   pageState[key] = Math.min(Math.max(1, pageState[key] || 1), totalPages);
@@ -521,7 +525,7 @@ function renderJobs(_skipFit){
   `).join('') : `<tr><td colspan="14" class="empty">No jobs match these filters</td></tr>`;
   renderPagination('jobsPagination', 'jobs', page, totalPages, renderJobs);
 
-  if(!_skipFit){
+  if(!_skipFit && WORKSPACE !== 'nonmaersk'){
     requestAnimationFrame(()=>{
       const fit = fitRowsToPanel('jobsTable');
       if(fit && fit !== DYNAMIC_PAGE_SIZE.jobs){
