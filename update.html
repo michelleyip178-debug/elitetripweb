@@ -649,19 +649,17 @@ async function openEdit(id){
   setTime('f_end', job.endTime);
   document.getElementById('f_qty').value = job.qty ?? '';
   document.getElementById('f_unitCost').value = job.unitCost ?? '';
-  const rateMap = getRateMapping(job.jobType);
-  const defaultUnitCost = rateMap ? (rateMap.flat ?? (rateMap.byVehicle ? rateMap.byVehicle[job.vehicle] : null)) : null;
-  unitCostEdited = defaultUnitCost != null && Number(job.unitCost) !== Number(defaultUnitCost);
+  // Always re-enable auto-calc on open, even if the stored value happens to
+  // differ from the formula (stale data self-heals the moment a dependent
+  // field changes) — only actual typing into the field locks it again.
+  unitCostEdited = false;
+  costEdited = false;
   document.getElementById('f_remarks').value = job.remarks || '';
   document.getElementById('qtyHint').style.display = isHourlyJobType(job.jobType) ? '' : 'none';
 
   document.getElementById('optionsList').innerHTML = '';
   const {data: options} = await sb.from(TBL.job_options).select('*').eq('job_id', id).order('id');
   (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount, o.note));
-  {
-    const computedCost = (Number(job.qty)||0)*(Number(job.unitCost)||0) + sumExtras();
-    costEdited = Math.abs((Number(job.cost)||0) - computedCost) > 0.005;
-  }
   updateTotal();
 
   showEdit();

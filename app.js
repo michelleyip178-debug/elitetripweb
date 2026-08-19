@@ -1368,11 +1368,10 @@ async function openJobModal(id){
   refreshVehicleField(job?.jobType);
   document.getElementById('f_vehicle').value = job?.vehicle || '';
   setUnitCostHint(!!getRateMapping(job?.jobType));
-  {
-    const rateMap = getRateMapping(job?.jobType);
-    const defaultUnitCost = rateMap ? (rateMap.flat ?? (rateMap.byVehicle ? rateMap.byVehicle[job?.vehicle] : null)) : null;
-    unitCostEdited = !!job && defaultUnitCost != null && Number(job.unitCost) !== Number(defaultUnitCost);
-  }
+  // Always re-enable auto-calc on open, even if the stored value happens to
+  // differ from the formula (stale data self-heals the moment a dependent
+  // field changes) — only actual typing into the field locks it again.
+  unitCostEdited = false;
   document.getElementById('f_client').value = job?.hostName || '';
   document.getElementById('f_company').value = job?.company || '';
   document.getElementById('f_costCentre').value = job?.costCentre || '';
@@ -1387,11 +1386,11 @@ async function openJobModal(id){
   document.getElementById('f_payout').value = job?.driverPayout ?? '';
   document.getElementById('f_coyFund').value = job?.coyFund ?? '';
   if(WORKSPACE === 'nonmaersk') document.getElementById('f_payoutAlan').value = job?.payoutAlan ?? '';
-  // Sharon's jobs default Coy Fund to Payout to Alan instead of Cost - Driver Payout.
-  const expectedCoyFund = (WORKSPACE === 'nonmaersk' && isSharonHost(job?.hostName))
-    ? (Number(job?.payoutAlan)||0)
-    : (Number(job?.cost)||0) - (Number(job?.driverPayout)||0);
-  coyFundEdited = !!job && Math.abs((Number(job.coyFund)||0) - expectedCoyFund) > 0.005;
+  // Always re-enable auto-calc on open, even if the stored value happens to
+  // differ from the formula (stale data self-heals the moment a dependent
+  // field changes) — only actual typing into the field locks it again.
+  coyFundEdited = false;
+  costEdited = false;
   document.getElementById('f_status').value = (job?.paymentStatus || 'UNPAID').toUpperCase();
   document.getElementById('f_remarks').value = job?.remarks || '';
   toggleQtyHint();
@@ -1400,10 +1399,6 @@ async function openJobModal(id){
   if(id){
     const {data: options} = await sb.from(TBL.job_options).select('*').eq('job_id', id).order('id');
     (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount, o.note));
-  }
-  {
-    const computedCost = (Number(job?.qty)||0)*(Number(job?.unitCost)||0) + sumExtras();
-    costEdited = !!job && Math.abs((Number(job.cost)||0) - computedCost) > 0.005;
   }
   recalc();
 
