@@ -106,38 +106,10 @@ function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').r
 // ---------- Pagination ----------
 const PAGE_SIZE = 10;
 const pageState = {};
-// Job Log & Invoices adjust their page size to fit the panel height (no
-// scrolling needed to see a full page), capped at PAGE_SIZE; every other
-// paginated view uses the fixed PAGE_SIZE too.
-const DYNAMIC_PAGE_SIZE = { jobs: PAGE_SIZE, invoices: PAGE_SIZE };
+// No dashboard table paginates — every view shows all matching rows, relying
+// on the panel's own internal scroll (max-height + overflow:auto).
 function paginate(key, items){
-  // ELITE Job Log shows every row at once — no pagination.
-  if(key === 'jobs' && WORKSPACE === 'nonmaersk'){
-    return { items, page: 1, totalPages: 1 };
-  }
-  const size = DYNAMIC_PAGE_SIZE[key] || PAGE_SIZE;
-  const totalPages = Math.max(1, Math.ceil(items.length / size));
-  pageState[key] = Math.min(Math.max(1, pageState[key] || 1), totalPages);
-  const page = pageState[key];
-  const start = (page-1)*size;
-  return { items: items.slice(start, start+size), page, totalPages };
-}
-// Measures how many rows actually fit in a table's panel without scrolling,
-// based on the currently-rendered rows' real (possibly multi-line) height.
-function fitRowsToPanel(tableId){
-  const table = document.getElementById(tableId);
-  if(!table) return null;
-  const panel = table.closest('.panel');
-  const thead = table.querySelector('thead');
-  const tbody = table.querySelector('tbody');
-  if(!panel || !tbody) return null;
-  const rows = [...tbody.children].filter(r=>!r.querySelector('.empty'));
-  if(!rows.length) return null;
-  const theadH = thead ? thead.offsetHeight : 0;
-  const avgRowH = rows.reduce((s,r)=>s+r.offsetHeight, 0) / rows.length;
-  if(!avgRowH) return null;
-  const availableH = panel.clientHeight - theadH;
-  return Math.min(PAGE_SIZE, Math.max(5, Math.floor(availableH / avgRowH)));
+  return { items, page: 1, totalPages: 1 };
 }
 function renderPagination(containerId, key, page, totalPages, onChange){
   const el = document.getElementById(containerId);
@@ -149,17 +121,6 @@ function renderPagination(containerId, key, page, totalPages, onChange){
     onChange();
   }));
 }
-// Re-measure Job Log / Invoices row-fit on resize (debounced) so the page size
-// keeps matching the available panel height.
-let resizeFitTimer = null;
-window.addEventListener('resize', ()=>{
-  clearTimeout(resizeFitTimer);
-  resizeFitTimer = setTimeout(()=>{
-    if(document.getElementById('view-jobs')?.classList.contains('active')) renderJobs();
-    if(document.getElementById('view-invoices')?.classList.contains('active')) renderInvoices();
-  }, 250);
-});
-
 // Force free-text data entry fields to uppercase, matching the ALL-CAPS convention used throughout the data.
 // Skips while an IME composition is active (e.g. typing Chinese via pinyin) so the candidate popup isn't disrupted;
 // toUpperCase() is a harmless no-op on CJK characters once composition commits.
@@ -524,16 +485,6 @@ function renderJobs(_skipFit){
     </tr>`).join('')}
   `).join('') : `<tr><td colspan="14" class="empty">No jobs match these filters</td></tr>`;
   renderPagination('jobsPagination', 'jobs', page, totalPages, renderJobs);
-
-  if(!_skipFit && WORKSPACE !== 'nonmaersk'){
-    requestAnimationFrame(()=>{
-      const fit = fitRowsToPanel('jobsTable');
-      if(fit && fit !== DYNAMIC_PAGE_SIZE.jobs){
-        DYNAMIC_PAGE_SIZE.jobs = fit;
-        renderJobs(true);
-      }
-    });
-  }
 }
 
 ['fMonth','fDriver','fStatus'].forEach(id=>document.getElementById(id).addEventListener('change', ()=>{ pageState.jobs=1; renderJobs(); }));
@@ -669,16 +620,6 @@ function renderInvoices(_skipFit){
   const checkable = [...document.querySelectorAll('.inv-check')];
   document.getElementById('invSelectAll').checked = checkable.length>0 && checkable.every(c=>c.checked);
   updateMarkPaidBtnLabel();
-
-  if(!_skipFit){
-    requestAnimationFrame(()=>{
-      const fit = fitRowsToPanel('invoicesTable');
-      if(fit && fit !== DYNAMIC_PAGE_SIZE.invoices){
-        DYNAMIC_PAGE_SIZE.invoices = fit;
-        renderInvoices(true);
-      }
-    });
-  }
 }
 document.getElementById('fInvSearch').addEventListener('input', ()=>{ pageState.invoices=1; renderInvoices(); });
 document.getElementById('fInvDate').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
