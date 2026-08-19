@@ -570,6 +570,18 @@ function populateInvoiceFilterOptions(){
   dates.sort();
   fDate.innerHTML = '<option value="">All Dates</option>' + dates.map(d=>`<option value="${d}">${fmtDate(d)}</option>`).join('');
   fDate.value = dates.includes(prevDate) ? prevDate : '';
+
+  const fHost = document.getElementById('fInvHost');
+  const prevHost = fHost.value;
+  const hosts = [...new Set(DATA.jobs.map(j=>(j.hostName||'').trim()).filter(Boolean))].sort();
+  fHost.innerHTML = '<option value="">All Hosts</option>' + hosts.map(h=>`<option value="${h.replace(/"/g,'&quot;')}">${h}</option>`).join('');
+  fHost.value = hosts.includes(prevHost) ? prevHost : '';
+
+  const fCompany = document.getElementById('fInvCompany');
+  const prevCompany = fCompany.value;
+  const companies = [...new Set(DATA.jobs.map(j=>(j.company||'').trim()).filter(Boolean))].sort();
+  fCompany.innerHTML = '<option value="">All Companies</option>' + companies.map(c=>`<option value="${c.replace(/"/g,'&quot;')}">${c}</option>`).join('');
+  fCompany.value = companies.includes(prevCompany) ? prevCompany : '';
 }
 
 function renderInvoices(_skipFit){
@@ -578,6 +590,8 @@ function renderInvoices(_skipFit){
   const year = document.getElementById('fInvYear').value;
   const month = document.getElementById('fInvMonth').value;
   const date = document.getElementById('fInvDate').value;
+  const host = document.getElementById('fInvHost').value;
+  const company = document.getElementById('fInvCompany').value;
 
   let rows = DATA.jobs.slice();
   if(search){
@@ -586,6 +600,18 @@ function renderInvoices(_skipFit){
   if(year) rows = rows.filter(j=>(j.date||'').slice(0,4)===year);
   if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
   if(date) rows = rows.filter(j=>j.date===date);
+  if(host) rows = rows.filter(j=>(j.hostName||'').trim()===host);
+  if(company) rows = rows.filter(j=>(j.company||'').trim()===company);
+
+  const totalCost = rows.reduce((s,j)=>s+(Number(j.qty)||0)*(Number(j.unitCost)||0)+optionsByJob(j.id).reduce((os,o)=>os+(Number(o.amount)||0),0),0);
+  const totalDriverPayout = rows.reduce((s,j)=>s+(Number(j.driverPayout)||0),0);
+  const totalPayoutAlan = rows.reduce((s,j)=>s+(Number(j.payoutAlan)||0),0);
+  document.getElementById('invoicesCards').innerHTML = `
+    <div class="card"><div class="label">Total Jobs</div><div class="value">${rows.length}</div></div>
+    <div class="card"><div class="label">Total Cost</div><div class="value">${fmtMoney(totalCost)}</div></div>
+    <div class="card"><div class="label">Total Driver Payout</div><div class="value">${fmtMoney(totalDriverPayout)}</div></div>
+    ${WORKSPACE === 'nonmaersk' ? `<div class="card"><div class="label">Total Payout to Alan</div><div class="value">${fmtMoney(totalPayoutAlan)}</div></div>` : ''}
+  `;
 
   if(sortState.invoices){
     const acc = INVOICES_SORT_ACCESSORS[sortState.invoices.key];
@@ -654,6 +680,8 @@ document.getElementById('fInvSearch').addEventListener('input', ()=>{ pageState.
 document.getElementById('fInvDate').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
 document.getElementById('fInvYear').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
 document.getElementById('fInvMonth').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
+document.getElementById('fInvHost').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
+document.getElementById('fInvCompany').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
 
 // "Mark as Paid" toggles to "Mark as Unpaid" once every job under the
 // selected invoice(s) is already PAID — a smart toggle, not two buttons.
