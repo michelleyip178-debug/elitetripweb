@@ -90,7 +90,7 @@
         </div>
       </div>
     </div>
-    <div class="field">
+    <div class="field" id="sHostFieldWrap">
       <label>Host Name</label>
       <select id="s_host"><option value="">— select host —</option></select>
     </div>
@@ -133,12 +133,12 @@
       <select id="f_vehicle"></select>
     </div>
 
-    <div class="field">
+    <div class="field" id="fHostFieldWrap">
       <label>Requestor / Host Name</label>
       <select id="f_host"><option value="">— select or leave blank —</option></select>
     </div>
 
-    <div class="field">
+    <div class="field" id="fCostCentreFieldWrap">
       <label>Cost Centre</label>
       <input type="text" id="f_costCentre">
     </div>
@@ -195,6 +195,12 @@
       </div>
     </div>
 
+    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel,#fff);border:1px solid var(--line,#e3e6ec);border-radius:10px;padding:14px 16px;margin:10px 0 6px;">
+      <span style="font-size:12px;color:var(--muted);">Total Cost (S$)</span>
+      <input type="number" id="totalDisplay" step="any" style="font-size:22px;font-weight:700;width:120px;text-align:right;border:none;background:transparent;padding:0;">
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin:0 0 16px;" id="costHint">Defaults to Qty × Unit Cost + Additional Options; editable to override</div>
+
     <div class="field">
       <label>Remarks</label>
       <input type="text" id="f_remarks">
@@ -214,8 +220,20 @@
 document.title = document.title.replace('EliteSkyline', `EliteSkyline (${WORKSPACE_LABEL})`);
 document.querySelector('header .sub').textContent = `Find and edit a trip you've logged · ${WORKSPACE_LABEL}`;
 
+// ELITE jobs don't need Cost Centre (Host Name stays).
+if(WORKSPACE === 'nonmaersk'){
+  ['fCostCentreFieldWrap'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
+}
+
+let CUSTOM_RATES = [];
 function getRateMapping(jobType){
-  return RATE_MAP[(jobType||'').trim()] || null;
+  const key = (jobType||'').trim();
+  if(RATE_MAP[key]) return RATE_MAP[key];
+  const custom = CUSTOM_RATES.find(r=>r.jobType===key);
+  return custom && custom.unitPrice != null ? {flat: Number(custom.unitPrice)} : null;
 }
 function setUnitCostHint(show){
   document.getElementById('unitCostHint').style.display = show ? '' : 'none';
@@ -233,23 +251,30 @@ function refreshVehicleField(jobType, selectedVehicle){
     wrap.style.display = 'none';
   }
 }
+// ELITE lets drivers/staff override Unit Cost from the rate card once they've
+// typed into it directly; MAERSK keeps the rate card authoritative.
+let unitCostEdited = false;
 function applyRateToUnitCost(){
   const jobType = document.getElementById('f_jobType').value;
   const map = getRateMapping(jobType);
   if(!map){ setUnitCostHint(false); return; }
+  if(WORKSPACE === 'nonmaersk' && unitCostEdited){ setUnitCostHint(true); return; }
   if(map.flat != null){
     document.getElementById('f_unitCost').value = map.flat;
     setUnitCostHint(true);
+    updateTotal();
   } else if(map.byVehicle){
     const vehicle = document.getElementById('f_vehicle').value;
     if(vehicle && map.byVehicle[vehicle] != null){
       document.getElementById('f_unitCost').value = map.byVehicle[vehicle];
       setUnitCostHint(true);
+      updateTotal();
     } else {
       setUnitCostHint(false);
     }
   }
 }
+document.getElementById('f_unitCost').addEventListener('input', ()=>{ unitCostEdited = true; });
 
 function fillSelect(sel, values, placeholder){
   const sorted = [...values].sort((a,b)=>String(a).localeCompare(String(b)));
@@ -365,7 +390,7 @@ function extractRoute(text){
   return text.split('\n').filter(l=>!/^\s*(REQUESTOR|UID|COST CENTRE|DRIVER|PAX|TIME)\s*:/i.test(l)).join('\n').trim();
 }
 function extractPax(text){
-  const m = (text||'').match(/^\s*PAX\s*:\s*(.+)$/im);
+  const m = (text||'').match(/^[ \t]*PAX[ \t]*:[ \t]*(.+)$/im);
   return m ? m[1].trim() : null;
 }
 function extractUid(text){
@@ -399,19 +424,66 @@ function applyOptionRate(row){
     row.querySelector('.optionAmount').value = (baseCost * map.percentOfCost/100).toFixed(2);
   }
 }
-function addOptionRow(optionType, amount){
+// MISCELLANEOUS and ADDITIONAL STOP (any variant) both take a free-text
+// description, since neither is specific enough on its own.
+function optionTypeNeedsNote(v){
+  return v === 'MISCELLANEOUS' || v === '杂项' || /^ADDITIONAL STOP/i.test(v||'');
+}
+function updateOptionNoteVisibility(row){
+  const noteEl = row.querySelector('.optionNote');
+  noteEl.style.display = optionTypeNeedsNote(row.querySelector('.optionType').value) ? '' : 'none';
+}
+// Additional Options pool includes both the built-in list and custom rates
+// (so newly added Chinese types are selectable here too), filtered to
+// Chinese-only for Sharon, same as the Job Type dropdown.
+function additionalOptionsFor(hostName){
+  const pool = [...new Set([...ADDITIONAL_OPTIONS, ...CUSTOM_RATES.map(r=>r.jobType).filter(Boolean)])];
+  return filterJobTypesForHost(pool, hostName);
+}
+function addOptionRow(optionType, amount, note){
   const list = document.getElementById('optionsList');
   const row = document.createElement('div');
   row.className = 'optionRow';
-  row.innerHTML = `<select class="optionType" style="flex:2;"><option value="">— select option —</option>${[...ADDITIONAL_OPTIONS].sort((a,b)=>a.localeCompare(b)).map(o=>`<option value="${o.replace(/"/g,'&quot;')}">${o}</option>`).join('')}</select>
+  const opts = additionalOptionsFor(document.getElementById('f_host').value);
+  row.innerHTML = `<select class="optionType" style="flex:2;"><option value="">— select option —</option>${[...opts].sort((a,b)=>a.localeCompare(b)).map(o=>`<option value="${o.replace(/"/g,'&quot;')}">${o}</option>`).join('')}</select>
     <input type="number" class="optionAmount" value="${amount ?? ''}" placeholder="Amount (S$)" step="any" style="flex:1;">
+    <input type="text" class="optionNote" value="${(note ?? '').replace(/"/g,'&quot;')}" placeholder="Describe item…" style="flex:2;">
     <button type="button" class="btn secondary removeRowBtn">✕</button>`;
   row.querySelector('.optionType').value = optionType || '';
-  row.querySelector('.removeRowBtn').addEventListener('click', ()=>row.remove());
-  row.querySelector('.optionType').addEventListener('change', ()=>applyOptionRate(row));
+  row.querySelector('.removeRowBtn').addEventListener('click', ()=>{ row.remove(); updateTotal(); });
+  row.querySelector('.optionAmount').addEventListener('input', updateTotal);
+  row.querySelector('.optionType').addEventListener('change', ()=>{ applyOptionRate(row); updateOptionNoteVisibility(row); });
+  updateOptionNoteVisibility(row);
   list.appendChild(row);
 }
+function refreshOptionRowChoices(){
+  const opts = additionalOptionsFor(document.getElementById('f_host').value);
+  document.querySelectorAll('#optionsList .optionRow').forEach(row=>{
+    const sel = row.querySelector('.optionType');
+    const current = sel.value;
+    fillSelect(sel, opts, '— select option —');
+    sel.value = current;
+  });
+}
 document.getElementById('addOptionBtn').addEventListener('click', ()=>addOptionRow('',''));
+
+// ELITE lets drivers/staff override Total Cost directly, same pattern as
+// Unit Cost; MAERSK keeps it strictly derived (readonly, set below).
+let costEdited = false;
+function updateTotal(){
+  const qty = Number(document.getElementById('f_qty').value)||0;
+  const unitCost = Number(document.getElementById('f_unitCost').value)||0;
+  const computedTotal = qty*unitCost + sumExtras();
+  if(!(WORKSPACE === 'nonmaersk' && costEdited)) document.getElementById('totalDisplay').value = computedTotal || '';
+}
+['f_qty','f_unitCost'].forEach(id=>document.getElementById(id).addEventListener('input', updateTotal));
+document.getElementById('totalDisplay').addEventListener('input', ()=>{
+  if(WORKSPACE === 'nonmaersk') costEdited = true;
+});
+if(WORKSPACE !== 'nonmaersk'){
+  document.getElementById('totalDisplay').readOnly = true;
+  document.getElementById('costHint').textContent = 'Qty × Unit Cost + Additional Options';
+}
 
 async function loadDrivers(){
   const {data} = await sb.from(TBL.drivers).select('name, active').eq('active', true).order('name');
@@ -432,11 +504,41 @@ function findClientByHost(hostName){
 document.getElementById('f_host').addEventListener('change', (e)=>{
   const c = findClientByHost(e.target.value);
   document.getElementById('f_costCentre').value = c?.costCentre || '';
+  refreshJobTypeOptions();
+  refreshOptionRowChoices();
 });
 
 loadDrivers();
 loadHosts();
+// Job Type dropdown includes both the built-in JOB_TYPES list and any custom
+// types added via the dashboard's Job Types & Rates tab.
 fillSelect(document.getElementById('f_jobType'), JOB_TYPES, '— select job type —');
+function hasChineseText(s){
+  return /[一-鿿]/.test(s||'');
+}
+// Sharon's trips are Chinese-language tour groups — default the Job Type
+// dropdown to Chinese-named types for her (falls back to the full list if
+// none exist yet, so the dropdown is never left empty).
+function filterJobTypesForHost(types, hostName){
+  if((hostName||'').trim().toUpperCase() !== 'SHARON') return types;
+  const chinese = types.filter(hasChineseText);
+  return chinese.length ? chinese : types;
+}
+let ALL_JOB_TYPES = JOB_TYPES.slice();
+function refreshJobTypeOptions(){
+  const sel = document.getElementById('f_jobType');
+  const current = sel.value;
+  fillSelect(sel, filterJobTypesForHost(ALL_JOB_TYPES, document.getElementById('f_host').value), '— select job type —');
+  sel.value = current;
+}
+async function loadJobTypes(){
+  const {data} = await sb.from(TBL.rates).select('jobType, unitPrice');
+  CUSTOM_RATES = data || [];
+  const custom = CUSTOM_RATES.map(r=>r.jobType).filter(Boolean);
+  ALL_JOB_TYPES = [...new Set([...JOB_TYPES, ...custom])];
+  refreshJobTypeOptions();
+}
+loadJobTypes();
 setPax('');
 loadHourSelect(document.getElementById('f_start_h'));
 loadMinuteSelect(document.getElementById('f_start_m'));
@@ -529,10 +631,17 @@ async function openEdit(id){
   }
   driverSel.value = job.driver || '';
   setDate('f_date', job.date || '');
-  document.getElementById('f_jobType').value = job.jobType || '';
+  document.getElementById('f_host').value = job.hostName ? job.hostName.trim() : '';
+  refreshJobTypeOptions();
+  const jobTypeSel = document.getElementById('f_jobType');
+  if(job.jobType && ![...jobTypeSel.options].some(o=>o.value===job.jobType)){
+    const o = document.createElement('option');
+    o.value = job.jobType; o.textContent = job.jobType;
+    jobTypeSel.appendChild(o);
+  }
+  jobTypeSel.value = job.jobType || '';
   refreshVehicleField(job.jobType, job.vehicle);
   setUnitCostHint(!!getRateMapping(job.jobType));
-  document.getElementById('f_host').value = job.hostName ? job.hostName.trim() : '';
   document.getElementById('f_costCentre').value = job.costCentre || '';
   setPax(extractPax(job.details) || '');
   document.getElementById('f_itinerary').value = extractRoute(job.details);
@@ -540,12 +649,18 @@ async function openEdit(id){
   setTime('f_end', job.endTime);
   document.getElementById('f_qty').value = job.qty ?? '';
   document.getElementById('f_unitCost').value = job.unitCost ?? '';
+  // Always re-enable auto-calc on open, even if the stored value happens to
+  // differ from the formula (stale data self-heals the moment a dependent
+  // field changes) — only actual typing into the field locks it again.
+  unitCostEdited = false;
+  costEdited = false;
   document.getElementById('f_remarks').value = job.remarks || '';
   document.getElementById('qtyHint').style.display = isHourlyJobType(job.jobType) ? '' : 'none';
 
   document.getElementById('optionsList').innerHTML = '';
   const {data: options} = await sb.from(TBL.job_options).select('*').eq('job_id', id).order('id');
-  (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount));
+  (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount, o.note));
+  updateTotal();
 
   showEdit();
   window.scrollTo({top:0, behavior:'smooth'});
@@ -567,6 +682,10 @@ document.getElementById('f_vehicle').addEventListener('change', applyRateToUnitC
 // For HOURLY job types, derive Qty from Start/End time (billed in whole-hour blocks, rounded up)
 function isHourlyJobType(jt){
   return !!jt && jt.toUpperCase().includes('HOURLY');
+}
+// TOUR GUIDE assignees are guides, not drivers — don't label them as DRIVER in trip details.
+function isTourGuideJobType(jt){
+  return !!jt && jt.toUpperCase().includes('TOUR GUIDE');
 }
 function updateQtyFromTime(){
   const jt = document.getElementById('f_jobType').value;
@@ -615,7 +734,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
   lines.push(`COST CENTRE: ${costCentre}`);
   lines.push(`PAX: ${pax||''}`);
   if(itinerary) lines.push(itinerary);
-  lines.push(`DRIVER: ${driver}`);
+  if(!isTourGuideJobType(jobType)) lines.push(`DRIVER: ${driver}`);
   if(isHourlyJobType(jobType)){
     if(startTime){
       const s = startTime.replace(':',''), e = endTime ? endTime.replace(':','') : '';
@@ -630,7 +749,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     uid, costCentre, company,
     details: lines.join('\n'),
     startTime: startTime||null, endTime: endTime||null,
-    qty, unitCost, cost: qty*unitCost + sumExtras(),
+    qty, unitCost, cost: Number(document.getElementById('totalDisplay').value)||0,
     remarks,
   };
 
@@ -644,6 +763,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
         job_id: editingId,
         optionType: row.querySelector('.optionType').value,
         amount: Number(row.querySelector('.optionAmount').value)||0,
+        note: row.querySelector('.optionNote').value.trim() || null,
       }))
       .filter(o=>o.optionType);
     await sb.from(TBL.job_options).delete().eq('job_id', editingId);

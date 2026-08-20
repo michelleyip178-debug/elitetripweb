@@ -40,7 +40,7 @@
   <button data-view="drivers">Drivers</button>
   <button data-view="clients">Clients</button>
   <button data-view="jobtypes">Job Types &amp; Rates</button>
-  <button data-view="maersk">MAERSK Summary</button>
+  <button data-view="maersk" id="maerskNavBtn">MAERSK Summary</button>
 </nav>
 
 <main>
@@ -87,13 +87,14 @@
           <th class="sortable" data-key="invoice">Invoice #<span class="sortArrow"></span></th>
           <th class="sortable" data-key="driver">Driver<span class="sortArrow"></span></th>
           <th class="sortable" data-key="jobType">Job Type<span class="sortArrow"></span></th>
-          <th class="sortable" data-key="startTime">Start Time<span class="sortArrow"></span></th>
-          <th class="sortable" data-key="endTime">End Time<span class="sortArrow"></span></th>
+          <th class="sortable time-col" data-key="startTime">Start Time<span class="sortArrow"></span></th>
+          <th class="sortable time-col" data-key="endTime">End Time<span class="sortArrow"></span></th>
           <th class="sortable" data-key="hostName">Host / Company<span class="sortArrow"></span></th>
           <th>Trip Details</th>
           <th class="num sortable" data-key="cost">Cost<span class="sortArrow"></span></th>
           <th class="num sortable" data-key="driverPayout">Payout<span class="sortArrow"></span></th>
-          <th class="num sortable" data-key="coyFund">Coy Fund<span class="sortArrow"></span></th>
+          <th class="num sortable fit-col" data-key="coyFund">Coy Fund<span class="sortArrow"></span></th>
+          <th class="num sortable payoutAlan-col fit-col" data-key="payoutAlan">Payout to Alan<span class="sortArrow"></span></th>
           <th class="sortable" data-key="paymentStatus">Status<span class="sortArrow"></span></th>
           <th></th>
         </tr></thead>
@@ -105,15 +106,19 @@
 
   <!-- INVOICES -->
   <div class="view" id="view-invoices">
+    <div class="cards" id="invoicesCards"></div>
     <div class="toolbar">
       <select id="fInvYear"><option value="">All Years</option></select>
       <select id="fInvMonth"><option value="">All Months</option></select>
       <select id="fInvDate"><option value="">All Dates</option></select>
+      <select id="fInvHost"><option value="">All Hosts</option></select>
+      <select id="fInvCompany"><option value="">All Companies</option></select>
       <input type="search" id="fInvSearch" placeholder="Search invoice #, host, company…">
       <div class="spacer"></div>
       <span class="small muted" id="invCount"></span>
       <button class="btn secondary" id="invoicesClearSortBtn">Clear Sort</button>
       <button class="btn secondary" id="autoAssignBtn">Auto-Assign Invoice #s</button>
+      <button class="btn secondary" id="markPaidBtn">Mark as Paid</button>
       <button class="btn" id="generateInvoiceBtn">Generate Invoice</button>
     </div>
     <div class="panel" style="overflow:auto;max-height:75vh;">
@@ -129,6 +134,7 @@
           <th class="num sortable" data-key="qty">Qty<span class="sortArrow"></span></th>
           <th class="num sortable" data-key="unitCost">Unit Cost<span class="sortArrow"></span></th>
           <th class="num sortable" data-key="cost">Cost<span class="sortArrow"></span></th>
+          <th class="num sortable payoutAlan-col fit-col" data-key="payoutAlan">Payout to Alan<span class="sortArrow"></span></th>
           <th class="sortable" data-key="paymentStatus">Status<span class="sortArrow"></span></th>
           <th></th>
         </tr></thead>
@@ -184,6 +190,17 @@
       <input type="search" id="fRatesSearch" placeholder="Search job type…">
       <div class="spacer"></div>
       <button class="btn" id="addRateBtn">+ New Job Type</button>
+    </div>
+    <div id="ratesChineseSection" style="display:none;">
+      <h2 style="font-size:14px;margin:0 0 8px;">Chinese Job Types</h2>
+      <div class="panel" style="overflow:auto;max-height:40vh;">
+        <table id="ratesChineseTable">
+          <thead><tr><th>Job Type</th><th class="num">Unit Price (S$)</th><th>Billing Unit</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="ratesChinesePagination"></div>
+      <h2 style="font-size:14px;margin:16px 0 8px;">Other Job Types</h2>
     </div>
     <div class="panel" style="overflow:auto;max-height:75vh;">
       <table id="ratesTable">
@@ -242,11 +259,11 @@
 
       <div id="vehicleFieldWrap" style="display:none;"><label>Vehicle Type</label><select id="f_vehicle"></select></div>
 
-      <div class="full"><label>Client (Host Name / Requestor)</label><select id="f_client"><option value="">— select or leave blank —</option></select></div>
+      <div class="full" id="clientFieldWrap"><label>Client (Host Name / Requestor)</label><select id="f_client"><option value="">— select or leave blank —</option></select></div>
 
-      <div><label>Company</label><input type="text" id="f_company"></div>
-      <div><label>UID</label><input type="text" id="f_uid"></div>
-      <div><label>Cost Centre</label><input type="text" id="f_costCentre"></div>
+      <div id="companyFieldWrap"><label>Company</label><input type="text" id="f_company"></div>
+      <div id="uidFieldWrap"><label>UID</label><input type="text" id="f_uid"></div>
+      <div id="costCentreFieldWrap"><label>Cost Centre</label><input type="text" id="f_costCentre"></div>
       <div><label>PAX</label><input type="text" id="f_pax" placeholder="e.g. 3 PAX"></div>
 
       <div class="full"><label>Itinerary</label><textarea id="f_details" rows="3" placeholder="e.g. PLQ 1 - Fairmont Singapore - PLQ 1"></textarea></div>
@@ -263,10 +280,11 @@
       <div><label>Qty</label><input type="number" id="f_qty" step="any" value="1"><div class="small muted" id="qtyHint" style="display:none;margin-top:3px;">Auto-set from Start/End time for hourly jobs (rounds up to the next full hour)</div></div>
       <div><label>Unit Cost (S$)</label><input type="number" id="f_unitCost" step="any"><div class="small muted" id="unitCostHint" style="display:none;margin-top:3px;">Auto-filled from Job Type / Vehicle rate card</div></div>
 
-      <div><label>Total Cost (S$)</label><input type="number" id="f_cost" step="any" readonly style="background:#f5f6f8;"><div class="small muted" style="margin-top:3px;">Qty × Unit Cost + Additional Options</div></div>
+      <div><label>Total Cost (S$)</label><input type="number" id="f_cost" step="any"><div class="small muted" id="costHint" style="margin-top:3px;">Defaults to Qty × Unit Cost + Additional Options; editable to override</div></div>
       <div><label>Driver Payout (S$)</label><input type="number" id="f_payout" step="any"></div>
 
-      <div><label>Company Fund (S$)</label><input type="number" id="f_coyFund" step="any" readonly style="background:#f5f6f8;"><div class="small muted" style="margin-top:3px;">Total Cost − Driver Payout</div></div>
+      <div><label>Company Fund (S$)</label><input type="number" id="f_coyFund" step="any"><div class="small muted" style="margin-top:3px;">Defaults to Total Cost − Driver Payout; editable to override</div></div>
+      <div id="payoutAlanFieldWrap"><label>Payout to Alan (S$)</label><input type="number" id="f_payoutAlan" step="any"></div>
       <div><label>Payment Status</label><select id="f_status"><option>UNPAID</option><option>PENDING</option><option>PAID</option></select></div>
 
       <div class="full"><label>Remarks</label><input type="text" id="f_remarks"></div>

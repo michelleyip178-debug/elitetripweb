@@ -5,6 +5,28 @@ document.title = document.title.replace('EliteSkyline', `EliteSkyline (${WORKSPA
 document.querySelector('header h1').textContent = `EliteSkyline — Job Log (${WORKSPACE_LABEL})`;
 document.querySelector('.login-box .sub').textContent = `Sign in to access the ${WORKSPACE_LABEL} Job Log`;
 
+// ELITE jobs don't need Host Name / Company / UID / Cost Centre on the job form,
+// and the MAERSK Summary tab (filters by MAERSK SINGAPORE PTE LTD + SG51 cost
+// centre) is irrelevant for ELITE.
+if(WORKSPACE === 'nonmaersk'){
+  ['uidFieldWrap','costCentreFieldWrap','maerskNavBtn'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
+} else {
+  // Payout to Alan is a manual field specific to ELITE jobs.
+  const el = document.getElementById('payoutAlanFieldWrap');
+  if(el) el.style.display = 'none';
+  // Total Cost is only overridable for ELITE — keep it strictly derived for MAERSK.
+  const costEl = document.getElementById('f_cost');
+  if(costEl){ costEl.readOnly = true; costEl.style.background = '#f5f6f8'; }
+  const costHint = document.getElementById('costHint');
+  if(costHint) costHint.textContent = 'Qty × Unit Cost + Additional Options';
+}
+// .payoutAlan-col (th and dynamically-rendered td cells alike) is hidden by
+// default in CSS and only shown for ELITE via this body class.
+if(WORKSPACE === 'nonmaersk') document.body.classList.add('ws-nonmaersk');
+
 // ---------- Auth ----------
 const loginOverlay = document.getElementById('loginOverlay');
 const loginBtn = document.getElementById('loginBtn');
@@ -82,14 +104,12 @@ let editingRateId = null;
 function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // ---------- Pagination ----------
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 10;
 const pageState = {};
+// No dashboard table paginates — every view shows all matching rows, relying
+// on the panel's own internal scroll (max-height + overflow:auto).
 function paginate(key, items){
-  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
-  pageState[key] = Math.min(Math.max(1, pageState[key] || 1), totalPages);
-  const page = pageState[key];
-  const start = (page-1)*PAGE_SIZE;
-  return { items: items.slice(start, start+PAGE_SIZE), page, totalPages };
+  return { items, page: 1, totalPages: 1 };
 }
 function renderPagination(containerId, key, page, totalPages, onChange){
   const el = document.getElementById(containerId);
@@ -101,7 +121,6 @@ function renderPagination(containerId, key, page, totalPages, onChange){
     onChange();
   }));
 }
-
 // Force free-text data entry fields to uppercase, matching the ALL-CAPS convention used throughout the data.
 // Skips while an IME composition is active (e.g. typing Chinese via pinyin) so the candidate popup isn't disrupted;
 // toUpperCase() is a harmless no-op on CJK characters once composition commits.
@@ -251,13 +270,14 @@ document.querySelectorAll('nav button').forEach(btn=>{
 let dashFiltersDefaulted = false;
 function populateDashFilterOptions(){
   const fYear = document.getElementById('fDashYear');
-  const years = [...new Set(DATA.jobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)))].sort();
+  const currentYear = String(new Date().getFullYear());
+  const years = [...new Set([...DATA.jobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)), currentYear])].sort();
   if(fYear.options.length<=1){
     years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
   }
-  if(!dashFiltersDefaulted && DATA.jobs.length){
-    const latestDate = DATA.jobs.map(j=>j.date).filter(Boolean).sort().slice(-1)[0];
-    if(latestDate) fYear.value = latestDate.slice(0,4);
+  // Default to the current real-world year, once per page load.
+  if(!dashFiltersDefaulted){
+    fYear.value = currentYear;
     dashFiltersDefaulted = true;
   }
 }
@@ -322,10 +342,10 @@ function populateFilterOptions(){
     DATA.drivers.map(d=>d.name).sort().forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;fDriver.appendChild(o);});
   }
 
-  // Default the view to the latest month present in the data, once.
-  if(!jobFiltersDefaulted && DATA.jobs.length){
-    const latestDate = DATA.jobs.map(j=>j.date).filter(Boolean).sort().slice(-1)[0];
-    if(latestDate) fMonth.value = monthKey(latestDate);
+  // Default the view to the current real-world month, once per page load —
+  // not the latest month with data, so it doesn't get stuck on an old month.
+  if(!jobFiltersDefaulted){
+    fMonth.value = MONTHS[new Date().getMonth()];
     jobFiltersDefaulted = true;
   }
 }
@@ -372,6 +392,7 @@ const JOBS_SORT_ACCESSORS = {
   cost: j=>(Number(j.qty)||0)*(Number(j.unitCost)||0),
   driverPayout: j=>Number(j.driverPayout)||0,
   coyFund: j=>Number(j.coyFund)||0,
+  payoutAlan: j=>Number(j.payoutAlan)||0,
   paymentStatus: j=>j.paymentStatus||'',
 };
 const INVOICES_SORT_ACCESSORS = {
@@ -383,6 +404,7 @@ const INVOICES_SORT_ACCESSORS = {
   qty: j=>Number(j.qty)||0,
   unitCost: j=>Number(j.unitCost)||0,
   cost: j=>(Number(j.qty)||0)*(Number(j.unitCost)||0),
+  payoutAlan: j=>Number(j.payoutAlan)||0,
   paymentStatus: j=>j.paymentStatus||'',
 };
 wireSortableHeaders('jobsTable', 'jobs', ()=>renderJobs());
@@ -390,7 +412,7 @@ wireSortableHeaders('invoicesTable', 'invoices', ()=>renderInvoices());
 document.getElementById('jobsClearSortBtn').addEventListener('click', ()=>{ sortState.jobs = null; renderJobs(); });
 document.getElementById('invoicesClearSortBtn').addEventListener('click', ()=>{ sortState.invoices = null; renderInvoices(); });
 
-function renderJobs(){
+function renderJobs(_skipFit){
   populateFilterOptions();
   const month = document.getElementById('fMonth').value;
   const driver = document.getElementById('fDriver').value;
@@ -432,15 +454,16 @@ function renderJobs(){
     <tr>
       <td>${fmtDate(j.date)}</td>
       <td>${j.invoice||''}</td>
-      <td>${j.driver||''}</td>
-      <td>${j.jobType||''}</td>
-      <td>${j.startTime||''}</td>
-      <td>${j.endTime||''}</td>
-      <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
-      <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
+      <td class="driver-cell">${j.driver||''}</td>
+      <td class="jobtype-cell">${j.jobType||''}</td>
+      <td class="time-col">${j.startTime||''}</td>
+      <td class="time-col">${j.endTime||''}</td>
+      <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
+      <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
-      <td class="num">${fmtMoney(j.coyFund)}</td>
+      <td class="num fit-col">${fmtMoney(j.coyFund)}</td>
+      <td class="num payoutAlan-col fit-col">${fmtMoney(j.payoutAlan)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>
@@ -448,19 +471,20 @@ function renderJobs(){
     <tr>
       <td>${fmtDate(j.date)}</td>
       <td>${j.invoice||''}</td>
-      <td>${j.driver||''}</td>
-      <td>${o.optionType||''}</td>
-      <td>${j.startTime||''}</td>
-      <td>${j.endTime||''}</td>
-      <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
-      <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
+      <td class="driver-cell">${j.driver||''}</td>
+      <td class="jobtype-cell">${fmtOptionLabel(o)}</td>
+      <td class="time-col">${j.startTime||''}</td>
+      <td class="time-col">${j.endTime||''}</td>
+      <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
+      <td class="details-cell">${renderOptionDetailsCell(j, o)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(j.driverPayout)}</td>
-      <td class="num">${fmtMoney(j.coyFund)}</td>
+      <td class="num fit-col">${fmtMoney(j.coyFund)}</td>
+      <td class="num payoutAlan-col fit-col">${fmtMoney(j.payoutAlan)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>`).join('')}
-  `).join('') : `<tr><td colspan="13" class="empty">No jobs match these filters</td></tr>`;
+  `).join('') : `<tr><td colspan="14" class="empty">No jobs match these filters</td></tr>`;
   renderPagination('jobsPagination', 'jobs', page, totalPages, renderJobs);
 }
 
@@ -473,7 +497,8 @@ const selectedInvoices = new Set();
 let invoiceFiltersDefaulted = false;
 function populateInvoiceFilterOptions(){
   const fYear = document.getElementById('fInvYear');
-  const years = [...new Set(DATA.jobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)))].sort();
+  const currentYear = String(new Date().getFullYear());
+  const years = [...new Set([...DATA.jobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)), currentYear])].sort();
   if(fYear.options.length<=1){
     years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
   }
@@ -482,13 +507,11 @@ function populateInvoiceFilterOptions(){
     MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;fMonth.appendChild(o);});
   }
 
-  // Default the view to the latest month present in the data, once.
-  if(!invoiceFiltersDefaulted && DATA.jobs.length){
-    const latestDate = DATA.jobs.map(j=>j.date).filter(Boolean).sort().slice(-1)[0];
-    if(latestDate){
-      fYear.value = latestDate.slice(0,4);
-      fMonth.value = latestDate.slice(5,7);
-    }
+  // Default the view to the current real-world month, once per page load —
+  // not the latest month with data, so it doesn't get stuck on an old month.
+  if(!invoiceFiltersDefaulted){
+    fYear.value = currentYear;
+    fMonth.value = String(new Date().getMonth()+1).padStart(2,'0');
     invoiceFiltersDefaulted = true;
   }
 
@@ -502,14 +525,28 @@ function populateInvoiceFilterOptions(){
   dates.sort();
   fDate.innerHTML = '<option value="">All Dates</option>' + dates.map(d=>`<option value="${d}">${fmtDate(d)}</option>`).join('');
   fDate.value = dates.includes(prevDate) ? prevDate : '';
+
+  const fHost = document.getElementById('fInvHost');
+  const prevHost = fHost.value;
+  const hosts = [...new Set(DATA.jobs.map(j=>(j.hostName||'').trim()).filter(Boolean))].sort();
+  fHost.innerHTML = '<option value="">All Hosts</option>' + hosts.map(h=>`<option value="${h.replace(/"/g,'&quot;')}">${h}</option>`).join('');
+  fHost.value = hosts.includes(prevHost) ? prevHost : '';
+
+  const fCompany = document.getElementById('fInvCompany');
+  const prevCompany = fCompany.value;
+  const companies = [...new Set(DATA.jobs.map(j=>(j.company||'').trim()).filter(Boolean))].sort();
+  fCompany.innerHTML = '<option value="">All Companies</option>' + companies.map(c=>`<option value="${c.replace(/"/g,'&quot;')}">${c}</option>`).join('');
+  fCompany.value = companies.includes(prevCompany) ? prevCompany : '';
 }
 
-function renderInvoices(){
+function renderInvoices(_skipFit){
   populateInvoiceFilterOptions();
   const search = document.getElementById('fInvSearch').value.toLowerCase();
   const year = document.getElementById('fInvYear').value;
   const month = document.getElementById('fInvMonth').value;
   const date = document.getElementById('fInvDate').value;
+  const host = document.getElementById('fInvHost').value;
+  const company = document.getElementById('fInvCompany').value;
 
   let rows = DATA.jobs.slice();
   if(search){
@@ -518,6 +555,18 @@ function renderInvoices(){
   if(year) rows = rows.filter(j=>(j.date||'').slice(0,4)===year);
   if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
   if(date) rows = rows.filter(j=>j.date===date);
+  if(host) rows = rows.filter(j=>(j.hostName||'').trim()===host);
+  if(company) rows = rows.filter(j=>(j.company||'').trim()===company);
+
+  const totalCost = rows.reduce((s,j)=>s+(Number(j.qty)||0)*(Number(j.unitCost)||0)+optionsByJob(j.id).reduce((os,o)=>os+(Number(o.amount)||0),0),0);
+  const totalDriverPayout = rows.reduce((s,j)=>s+(Number(j.driverPayout)||0),0);
+  const totalPayoutAlan = rows.reduce((s,j)=>s+(Number(j.payoutAlan)||0),0);
+  document.getElementById('invoicesCards').innerHTML = `
+    <div class="card"><div class="label">Total Jobs</div><div class="value">${rows.length}</div></div>
+    <div class="card"><div class="label">Total Cost</div><div class="value">${fmtMoney(totalCost)}</div></div>
+    <div class="card"><div class="label">Total Driver Payout</div><div class="value">${fmtMoney(totalDriverPayout)}</div></div>
+    ${WORKSPACE === 'nonmaersk' ? `<div class="card"><div class="label">Total Payout to Alan</div><div class="value">${fmtMoney(totalPayoutAlan)}</div></div>` : ''}
+  `;
 
   if(sortState.invoices){
     const acc = INVOICES_SORT_ACCESSORS[sortState.invoices.key];
@@ -539,13 +588,14 @@ function renderInvoices(){
       <td>${exportable ? `<input type="checkbox" class="inv-check" data-inv="${encodeURIComponent(inv)}" ${checked}>` : ''}</td>
       <td>${fmtDate(j.date)}</td>
       <td>${inv}</td>
-      <td>${j.driver||''}</td>
-      <td>${j.jobType||''}</td>
-      <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
-      <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
+      <td class="driver-cell">${j.driver||''}</td>
+      <td class="jobtype-cell">${j.jobType||''}</td>
+      <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
+      <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${j.qty ?? ''}</td>
       <td class="num">${fmtMoney(j.unitCost)}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
+      <td class="num payoutAlan-col fit-col">${fmtMoney(j.payoutAlan)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>
@@ -554,26 +604,39 @@ function renderInvoices(){
       <td></td>
       <td>${fmtDate(j.date)}</td>
       <td>${inv}</td>
-      <td>${j.driver||''}</td>
-      <td>${o.optionType||''}</td>
-      <td>${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
-      <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
+      <td class="driver-cell">${j.driver||''}</td>
+      <td class="jobtype-cell">${fmtOptionLabel(o)}</td>
+      <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
+      <td class="details-cell">${renderOptionDetailsCell(j, o)}</td>
       <td class="num">1</td>
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
+      <td class="num payoutAlan-col fit-col"></td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>`).join('')}`;
-  }).join('') : `<tr><td colspan="12" class="empty">No records found</td></tr>`;
+  }).join('') : `<tr><td colspan="13" class="empty">No records found</td></tr>`;
   renderPagination('invoicesPagination', 'invoices', page, totalPages, renderInvoices);
   const checkable = [...document.querySelectorAll('.inv-check')];
   document.getElementById('invSelectAll').checked = checkable.length>0 && checkable.every(c=>c.checked);
+  updateMarkPaidBtnLabel();
 }
 document.getElementById('fInvSearch').addEventListener('input', ()=>{ pageState.invoices=1; renderInvoices(); });
 document.getElementById('fInvDate').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
 document.getElementById('fInvYear').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
 document.getElementById('fInvMonth').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
+document.getElementById('fInvHost').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
+document.getElementById('fInvCompany').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
 
+// "Mark as Paid" toggles to "Mark as Unpaid" once every job under the
+// selected invoice(s) is already PAID — a smart toggle, not two buttons.
+function updateMarkPaidBtnLabel(){
+  const btn = document.getElementById('markPaidBtn');
+  if(!btn) return;
+  const jobs = DATA.jobs.filter(j=>selectedInvoices.has(j.invoice));
+  const allPaid = jobs.length>0 && jobs.every(j=>(j.paymentStatus||'').toUpperCase()==='PAID');
+  btn.textContent = allPaid ? 'Mark as Unpaid' : 'Mark as Paid';
+}
 document.querySelector('#invoicesTable tbody').addEventListener('change', e=>{
   if(e.target.matches('.inv-check')){
     const inv = decodeURIComponent(e.target.dataset.inv);
@@ -581,6 +644,7 @@ document.querySelector('#invoicesTable tbody').addEventListener('change', e=>{
     // Sync other rows sharing the same invoice # on this page.
     document.querySelectorAll(`.inv-check[data-inv="${e.target.dataset.inv}"]`).forEach(c=>c.checked = e.target.checked);
     document.getElementById('invSelectAll').checked = [...document.querySelectorAll('.inv-check')].every(c=>c.checked);
+    updateMarkPaidBtnLabel();
   }
 });
 document.getElementById('invSelectAll').addEventListener('change', e=>{
@@ -589,15 +653,17 @@ document.getElementById('invSelectAll').addEventListener('change', e=>{
     c.checked = e.target.checked;
     if(e.target.checked) selectedInvoices.add(inv); else selectedInvoices.delete(inv);
   });
+  updateMarkPaidBtnLabel();
 });
 
 // ---------- Auto-assign invoice numbers ----------
 // Rule: MAERSK SINGAPORE PTE LTD bills all trips for a calendar month on one invoice.
 // Every other company gets one invoice per date.
 const MAERSK_MONTHLY_COMPANY = 'MAERSK SINGAPORE PTE LTD';
+const INVOICE_PREFIX = WORKSPACE === 'nonmaersk' ? 'EINV' : 'MINV';
 function nextInvoiceSeqForMonth(yyyymm){
   let max = 0;
-  const re = new RegExp('^MINV'+yyyymm+'(\\d{4})');
+  const re = new RegExp('^'+INVOICE_PREFIX+yyyymm+'(\\d{4})');
   DATA.jobs.forEach(j=>{
     if(j.invoice){
       const m = j.invoice.match(re);
@@ -605,6 +671,15 @@ function nextInvoiceSeqForMonth(yyyymm){
     }
   });
   return max+1;
+}
+// What invoice # this job would get if freshly auto-assigned — used to
+// suggest a number when the user types one that's already in use elsewhere.
+function suggestInvoiceFor(job){
+  if(!job.date) return null;
+  const [y,m] = job.date.split('-');
+  const yyyymm = y+m;
+  const seq = nextInvoiceSeqForMonth(yyyymm);
+  return `${INVOICE_PREFIX}${yyyymm}${String(seq).padStart(4,'0')}`;
 }
 async function autoAssignInvoiceNumbers(){
   const ungrouped = DATA.jobs.filter(j=>!j.invoice && j.date);
@@ -624,7 +699,7 @@ async function autoAssignInvoiceNumbers(){
   const assignments = Object.values(groups).map(g=>{
     if(seqByMonth[g.yyyymm] == null) seqByMonth[g.yyyymm] = nextInvoiceSeqForMonth(g.yyyymm);
     const seq = seqByMonth[g.yyyymm]++;
-    return { invNum: `MINV${g.yyyymm}${String(seq).padStart(4,'0')}`, jobs: g.jobs };
+    return { invNum: `${INVOICE_PREFIX}${g.yyyymm}${String(seq).padStart(4,'0')}`, jobs: g.jobs };
   });
 
   const skipped = DATA.jobs.filter(j=>!j.invoice && !j.date).length;
@@ -648,14 +723,53 @@ function extractRoute(text){
   return text.split('\n').filter(l=>!/^\s*(REQUESTOR|UID|COST CENTRE|DRIVER|PAX|TIME)\s*:/i.test(l)).join('\n').trim();
 }
 function extractPax(text){
-  const m = (text||'').match(/^\s*PAX\s*:\s*(.+)$/im);
+  const m = (text||'').match(/^[ \t]*PAX[ \t]*:[ \t]*(.+)$/im);
   return m ? m[1].trim() : null;
+}
+// ELITE jobs don't carry Host/UID/Cost Centre, so their Trip Details cell just
+// shows Itinerary, PAX, and Driver instead of the full MAERSK-style detail block.
+function renderTripDetailsCell(j){
+  if(WORKSPACE === 'nonmaersk'){
+    const itinerary = extractRoute(j.details);
+    const pax = extractPax(j.details);
+    const lines = [];
+    if(itinerary) lines.push(escHtml(itinerary));
+    if(pax) lines.push(`PAX: ${escHtml(pax)}`);
+    return lines.length ? `<div class="small" style="white-space:pre-line;">${lines.join('\n')}</div>` : '';
+  }
+  return j.details ? `<div class="small" style="white-space:pre-line;">${escHtml(j.details)}</div>` : '';
+}
+// For an ADDITIONAL STOP option row, its own description replaces the
+// parent job's Trip Details in that row — the stop's location, not the
+// whole trip, is what belongs there.
+function renderOptionDetailsCell(j, o){
+  if(/^ADDITIONAL STOP/i.test(o.optionType||'') && o.note){
+    return `<div class="small" style="white-space:pre-line;">${escHtml(o.note)}</div>`;
+  }
+  return renderTripDetailsCell(j);
 }
 function csvField(v){
   v = v==null ? '' : String(v);
   if(/[",\n]/.test(v)) return '"'+v.replace(/"/g,'""')+'"';
   return v;
 }
+document.getElementById('markPaidBtn').addEventListener('click', async ()=>{
+  if(selectedInvoices.size===0){ alert('Select at least one invoice.'); return; }
+  const invNums = [...selectedInvoices];
+  const jobs = DATA.jobs.filter(j=>invNums.includes(j.invoice));
+  if(jobs.length===0){ alert('No jobs found for the selected invoice(s).'); return; }
+
+  const allPaid = jobs.every(j=>(j.paymentStatus||'').toUpperCase()==='PAID');
+  const target = allPaid ? 'UNPAID' : 'PAID';
+  if(!confirm(`Mark ${jobs.length} job(s) across ${invNums.length} invoice(s) as ${target}?`)) return;
+
+  const ids = jobs.map(j=>j.id);
+  const {error} = await sb.from(TBL.jobs).update({paymentStatus:target}).in('id', ids);
+  if(error){ alert('Failed to update status: '+error.message); return; }
+  jobs.forEach(j=>{ j.paymentStatus = target; });
+  renderAll();
+  alert(`Marked ${jobs.length} job(s) as ${target}.`);
+});
 document.getElementById('generateInvoiceBtn').addEventListener('click', ()=>{
   if(selectedInvoices.size===0){ alert('Select at least one invoice to generate.'); return; }
   const params = new URLSearchParams({ ws: WORKSPACE, inv: [...selectedInvoices].join(',') });
@@ -857,18 +971,30 @@ document.getElementById('deleteClientBtn').addEventListener('click', async ()=>{
 });
 
 // ---------- Job types / rates ----------
+function renderRateRows(tbodySel, paginationId, pageKey, rows){
+  const {items:pageRows, page, totalPages} = paginate(pageKey, rows);
+  document.querySelector(tbodySel).innerHTML = pageRows.length ? pageRows.map(r=>`
+    <tr><td>${r.jobType}</td><td class="num">${r.unitPrice}</td><td>${r.billingUnit||''}</td>
+    <td class="row-actions"><button onclick="openRateModal(${r.id})">Edit</button></td></tr>
+  `).join('') : `<tr><td colspan="4" class="empty">No job types found</td></tr>`;
+  renderPagination(paginationId, pageKey, page, totalPages, renderRates);
+}
 function renderRates(){
   const search = document.getElementById('fRatesSearch').value.toLowerCase();
   let rows = DATA.rates.slice();
   if(search){
     rows = rows.filter(r=>(r.jobType||'').toLowerCase().includes(search));
   }
-  const {items:pageRows, page, totalPages} = paginate('rates', rows);
-  document.querySelector('#ratesTable tbody').innerHTML = pageRows.length ? pageRows.map(r=>`
-    <tr><td>${r.jobType}</td><td class="num">${r.unitPrice}</td><td>${r.billingUnit||''}</td>
-    <td class="row-actions"><button onclick="openRateModal(${r.id})">Edit</button></td></tr>
-  `).join('') : `<tr><td colspan="4" class="empty">No job types found</td></tr>`;
-  renderPagination('ratesPagination', 'rates', page, totalPages, renderRates);
+  if(WORKSPACE === 'nonmaersk'){
+    document.getElementById('ratesChineseSection').style.display = '';
+    const chineseRows = rows.filter(r=>hasChineseText(r.jobType));
+    const otherRows = rows.filter(r=>!hasChineseText(r.jobType));
+    renderRateRows('#ratesChineseTable tbody', 'ratesChinesePagination', 'ratesChinese', chineseRows);
+    renderRateRows('#ratesTable tbody', 'ratesPagination', 'rates', otherRows);
+  } else {
+    document.getElementById('ratesChineseSection').style.display = 'none';
+    renderRateRows('#ratesTable tbody', 'ratesPagination', 'rates', rows);
+  }
 }
 document.getElementById('fRatesSearch').addEventListener('input', ()=>{ pageState.rates=1; renderRates(); });
 
@@ -926,11 +1052,31 @@ function fillSelect(sel, values, placeholder){
   sel.innerHTML = (placeholder?`<option value="">${placeholder}</option>`:'') + sorted.map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('');
 }
 
-function setupModalOptions(currentDriverName){
+// Job Type dropdown includes both the built-in JOB_TYPES list and any custom
+// types added via the Job Types & Rates tab (DATA.rates), so a newly added
+// rate shows up immediately without editing code.
+function allJobTypes(){
+  return [...new Set([...JOB_TYPES, ...DATA.rates.map(r=>r.jobType).filter(Boolean)])];
+}
+function hasChineseText(s){
+  return /[一-鿿]/.test(s||'');
+}
+function isSharonHost(hostName){
+  return (hostName||'').trim().toUpperCase() === 'SHARON';
+}
+// Sharon's trips are Chinese-language tour groups — default the Job Type
+// dropdown to Chinese-named types for her (falls back to the full list if
+// none exist yet, so the dropdown is never left empty).
+function filterJobTypesForHost(types, hostName){
+  if((hostName||'').trim().toUpperCase() !== 'SHARON') return types;
+  const chinese = types.filter(hasChineseText);
+  return chinese.length ? chinese : types;
+}
+function setupModalOptions(currentDriverName, currentHostName){
   const driverNames = DATA.drivers.filter(d=>d.active !== false).map(d=>d.name);
   if(currentDriverName && !driverNames.includes(currentDriverName)) driverNames.push(currentDriverName);
   fillSelect(document.getElementById('f_driver'), driverNames, '— select driver —');
-  fillSelect(document.getElementById('f_jobType'), JOB_TYPES, '— select job type —');
+  fillSelect(document.getElementById('f_jobType'), filterJobTypesForHost(allJobTypes(), currentHostName), '— select job type —');
   fillSelect(document.getElementById('f_client'), DATA.clients.map(c=>c.hostName), '— select or leave blank —');
 }
 
@@ -941,6 +1087,12 @@ document.getElementById('f_client').addEventListener('change', (e)=>{
     document.getElementById('f_costCentre').value = c.costCentre||'';
     document.getElementById('f_uid').value = c.uid||'';
   }
+  const jobTypeSel = document.getElementById('f_jobType');
+  const current = jobTypeSel.value;
+  fillSelect(jobTypeSel, filterJobTypesForHost(allJobTypes(), e.target.value), '— select job type —');
+  jobTypeSel.value = current;
+  refreshOptionRowChoices();
+  recalc();
 });
 
 // Additional Options: a repeatable list where each row picks one of the
@@ -973,38 +1125,95 @@ function applyOptionRate(row){
   }
   recalc();
 }
-function addOptionRow(optionType, amount){
+// ADDITIONAL STOP's description shows in the Trip Details column instead
+// (see renderOptionDetailsCell) — keep Job Type showing just the job type.
+function fmtOptionLabel(o){
+  if(o.note && !/^ADDITIONAL STOP/i.test(o.optionType||'')) return `${o.optionType||''} — ${o.note}`;
+  return o.optionType||'';
+}
+// MISCELLANEOUS and ADDITIONAL STOP (any variant) both take a free-text
+// description, since neither is specific enough on its own.
+function optionTypeNeedsNote(v){
+  return v === 'MISCELLANEOUS' || v === '杂项' || /^ADDITIONAL STOP/i.test(v||'');
+}
+function updateOptionNoteVisibility(row){
+  const noteEl = row.querySelector('.optionNote');
+  noteEl.style.display = optionTypeNeedsNote(row.querySelector('.optionType').value) ? '' : 'none';
+}
+// Additional Options pool includes both the built-in list and custom rates
+// (so newly added Chinese types are selectable here too), filtered to
+// Chinese-only for Sharon, same as the Job Type dropdown.
+function additionalOptionsFor(hostName){
+  const pool = [...new Set([...ADDITIONAL_OPTIONS, ...DATA.rates.map(r=>r.jobType).filter(Boolean)])];
+  return filterJobTypesForHost(pool, hostName);
+}
+function addOptionRow(optionType, amount, note){
   const list = document.getElementById('optionsList');
   const row = document.createElement('div');
   row.className = 'optionRow';
   row.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;';
-  row.innerHTML = `<select class="optionType" style="flex:2;"><option value="">— select option —</option>${[...ADDITIONAL_OPTIONS].sort((a,b)=>a.localeCompare(b)).map(o=>`<option value="${o.replace(/"/g,'&quot;')}">${o}</option>`).join('')}</select>
+  const opts = additionalOptionsFor(document.getElementById('f_client').value);
+  row.innerHTML = `<select class="optionType" style="flex:2;"><option value="">— select option —</option>${[...opts].sort((a,b)=>a.localeCompare(b)).map(o=>`<option value="${o.replace(/"/g,'&quot;')}">${o}</option>`).join('')}</select>
     <input type="number" class="optionAmount" value="${amount ?? ''}" placeholder="Amount (S$)" step="any" style="flex:1;">
+    <input type="text" class="optionNote" value="${(note ?? '').replace(/"/g,'&quot;')}" placeholder="Describe item…" style="flex:2;">
     <button type="button" class="btn secondary removeRowBtn" style="padding:6px 10px;flex:0 0 auto;">✕</button>`;
   row.querySelector('.optionType').value = optionType || '';
   row.querySelector('.removeRowBtn').addEventListener('click', ()=>{ row.remove(); recalc(); });
   row.querySelector('.optionAmount').addEventListener('input', recalc);
-  row.querySelector('.optionType').addEventListener('change', ()=>applyOptionRate(row));
+  row.querySelector('.optionType').addEventListener('change', ()=>{ applyOptionRate(row); updateOptionNoteVisibility(row); });
+  updateOptionNoteVisibility(row);
   list.appendChild(row);
+}
+function refreshOptionRowChoices(){
+  const opts = additionalOptionsFor(document.getElementById('f_client').value);
+  document.querySelectorAll('#optionsList .optionRow').forEach(row=>{
+    const sel = row.querySelector('.optionType');
+    const current = sel.value;
+    fillSelect(sel, opts, '— select option —');
+    sel.value = current;
+  });
 }
 document.getElementById('addOptionBtn').addEventListener('click', ()=>addOptionRow('',''));
 
-// Company Fund is always derived: Total Cost − Driver Payout. Driver Payout is
-// the manually-entered field for every driver, in both workspaces.
+// Company Fund defaults to Total Cost − Driver Payout, but is editable —
+// once the user types into it directly, stop overwriting their value.
+let coyFundEdited = false;
+// ELITE lets staff override Total Cost directly, same pattern as Unit Cost
+// and Company Fund; MAERSK keeps it strictly derived (Qty × Unit Cost + Options).
+let costEdited = false;
 function recalc(){
   const qty = Number(document.getElementById('f_qty').value)||0;
   const unitCost = Number(document.getElementById('f_unitCost').value)||0;
-  const cost = qty*unitCost + sumExtras();
-  document.getElementById('f_cost').value = cost || '';
+  const computedCost = qty*unitCost + sumExtras();
+  if(!(WORKSPACE === 'nonmaersk' && costEdited)) document.getElementById('f_cost').value = computedCost || '';
+  const cost = Number(document.getElementById('f_cost').value)||0;
 
   const payout = Number(document.getElementById('f_payout').value)||0;
-  document.getElementById('f_coyFund').value = cost ? (cost - payout).toFixed(2) : '';
+  if(!coyFundEdited){
+    // Sharon's jobs default Coy Fund to Payout to Alan instead of Cost - Driver Payout.
+    if(WORKSPACE === 'nonmaersk' && isSharonHost(document.getElementById('f_client').value)){
+      const payoutAlan = document.getElementById('f_payoutAlan').value;
+      document.getElementById('f_coyFund').value = payoutAlan === '' ? '' : (Number(payoutAlan)||0).toFixed(2);
+    } else {
+      document.getElementById('f_coyFund').value = cost ? (cost - payout).toFixed(2) : '';
+    }
+  }
 }
 ['f_qty','f_unitCost','f_payout'].forEach(id=>document.getElementById(id).addEventListener('input', recalc));
+document.getElementById('f_payoutAlan').addEventListener('input', recalc);
+document.getElementById('f_cost').addEventListener('input', ()=>{
+  if(WORKSPACE === 'nonmaersk') costEdited = true;
+  recalc();
+});
+document.getElementById('f_coyFund').addEventListener('input', ()=>{ coyFundEdited = true; });
 
 // For HOURLY job types, derive Qty from Start/End time (billed in whole-hour blocks, rounded up)
 function isHourlyJobType(jt){
   return !!jt && jt.toUpperCase().includes('HOURLY');
+}
+// TOUR GUIDE assignees are guides, not drivers — don't label them as DRIVER in trip details.
+function isTourGuideJobType(jt){
+  return !!jt && jt.toUpperCase().includes('TOUR GUIDE');
 }
 function toggleQtyHint(){
   const hint = document.getElementById('qtyHint');
@@ -1034,7 +1243,10 @@ wireTimeMask(document.getElementById('f_end'));
 // ---------- Rate card: Job Type (+ Vehicle Type where the rate varies by vehicle) -> Unit Cost ----------
 // RATE_MAP comes from workspace-config.js (picks MAERSK vs Non-MAERSK pricing based on ?ws=).
 function getRateMapping(jobType){
-  return RATE_MAP[(jobType||'').trim()] || null;
+  const key = (jobType||'').trim();
+  if(RATE_MAP[key]) return RATE_MAP[key];
+  const custom = DATA.rates.find(r=>r.jobType===key);
+  return custom && custom.unitPrice != null ? {flat: Number(custom.unitPrice)} : null;
 }
 function setUnitCostHint(show){
   const hint = document.getElementById('unitCostHint');
@@ -1052,10 +1264,14 @@ function refreshVehicleField(jobType){
     wrap.style.display = 'none';
   }
 }
+// ELITE lets drivers/staff override Unit Cost from the rate card once they've
+// typed into it directly; MAERSK keeps the rate card authoritative.
+let unitCostEdited = false;
 function applyRateToUnitCost(){
   const jobType = document.getElementById('f_jobType').value;
   const map = getRateMapping(jobType);
   if(!map){ setUnitCostHint(false); return; }
+  if(WORKSPACE === 'nonmaersk' && unitCostEdited){ setUnitCostHint(true); return; }
   if(map.flat != null){
     document.getElementById('f_unitCost').value = map.flat;
     setUnitCostHint(true);
@@ -1071,6 +1287,7 @@ function applyRateToUnitCost(){
     }
   }
 }
+document.getElementById('f_unitCost').addEventListener('input', ()=>{ unitCostEdited = true; });
 document.getElementById('f_jobType').addEventListener('change', ()=>{
   refreshVehicleField(document.getElementById('f_jobType').value);
   applyRateToUnitCost();
@@ -1079,10 +1296,11 @@ document.getElementById('f_vehicle').addEventListener('change', applyRateToUnitC
 
 async function openJobModal(id){
   editingId = id || null;
+  coyFundEdited = false;
   const job = id ? DATA.jobs.find(j=>j.id===id) : null;
   document.getElementById('jobModalTitle').textContent = job ? 'Edit Job' : 'New Job';
   document.getElementById('deleteJobBtn').style.display = job ? '' : 'none';
-  setupModalOptions(job?.driver);
+  setupModalOptions(job?.driver, job?.hostName);
 
   setDate('f_date', job?.date || '');
   document.getElementById('f_invoice').value = job?.invoice || '';
@@ -1091,6 +1309,10 @@ async function openJobModal(id){
   refreshVehicleField(job?.jobType);
   document.getElementById('f_vehicle').value = job?.vehicle || '';
   setUnitCostHint(!!getRateMapping(job?.jobType));
+  // Always re-enable auto-calc on open, even if the stored value happens to
+  // differ from the formula (stale data self-heals the moment a dependent
+  // field changes) — only actual typing into the field locks it again.
+  unitCostEdited = false;
   document.getElementById('f_client').value = job?.hostName || '';
   document.getElementById('f_company').value = job?.company || '';
   document.getElementById('f_costCentre').value = job?.costCentre || '';
@@ -1103,6 +1325,13 @@ async function openJobModal(id){
   document.getElementById('f_unitCost').value = job?.unitCost ?? '';
   document.getElementById('f_cost').value = job?.cost ?? '';
   document.getElementById('f_payout').value = job?.driverPayout ?? '';
+  document.getElementById('f_coyFund').value = job?.coyFund ?? '';
+  if(WORKSPACE === 'nonmaersk') document.getElementById('f_payoutAlan').value = job?.payoutAlan ?? '';
+  // Always re-enable auto-calc on open, even if the stored value happens to
+  // differ from the formula (stale data self-heals the moment a dependent
+  // field changes) — only actual typing into the field locks it again.
+  coyFundEdited = false;
+  costEdited = false;
   document.getElementById('f_status').value = (job?.paymentStatus || 'UNPAID').toUpperCase();
   document.getElementById('f_remarks').value = job?.remarks || '';
   toggleQtyHint();
@@ -1110,7 +1339,7 @@ async function openJobModal(id){
   document.getElementById('optionsList').innerHTML = '';
   if(id){
     const {data: options} = await sb.from(TBL.job_options).select('*').eq('job_id', id).order('id');
-    (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount));
+    (options||[]).forEach(o=>addOptionRow(o.optionType, o.amount, o.note));
   }
   recalc();
 
@@ -1133,7 +1362,7 @@ function buildTripDetails({hostName, uid, costCentre, pax, itinerary, driver, st
   if(itinerary) lines.push(itinerary);
   const d = DATA.drivers.find(x=>x.name===driver);
   const plate = d?.plate || '';
-  lines.push(`DRIVER: ${driver||''}${plate?` (${plate})`:''}`);
+  if(!isTourGuideJobType(jobType)) lines.push(`DRIVER: ${driver||''}${plate?` (${plate})`:''}`);
   if(isHourlyJobType(jobType)){
     if(startTime){
       const s = startTime.replace(':','');
@@ -1152,6 +1381,7 @@ async function syncStopsAndExtras(jobId){
       job_id: jobId,
       optionType: row.querySelector('.optionType').value,
       amount: Number(row.querySelector('.optionAmount').value)||0,
+      note: row.querySelector('.optionNote').value.trim() || null,
     }))
     .filter(o=>o.optionType);
 
@@ -1188,7 +1418,20 @@ document.getElementById('saveJobBtn').addEventListener('click', async ()=>{
     paymentStatus: document.getElementById('f_status').value,
     remarks: document.getElementById('f_remarks').value,
   };
+  if(WORKSPACE === 'nonmaersk') job.payoutAlan = Number(document.getElementById('f_payoutAlan').value)||0;
   if(!job.date){ alert('Please set a date.'); return; }
+  if(job.invoice){
+    const conflict = DATA.jobs.find(j =>
+      j.invoice === job.invoice && j.id !== editingId &&
+      (j.company||'').trim().toUpperCase() !== (job.company||'').trim().toUpperCase()
+    );
+    if(conflict){
+      const suggestion = suggestInvoiceFor(job);
+      alert(`Invoice # "${job.invoice}" is already used by ${conflict.company || conflict.hostName || 'a different company'} — using it here would mix two companies onto one invoice.`
+        + (suggestion ? `\n\nNext available invoice #: ${suggestion}` : ''));
+      return;
+    }
+  }
   if(editingId){
     job.id = editingId;
     const {error} = await sb.from(TBL.jobs).update(job).eq('id', editingId);
@@ -1247,7 +1490,8 @@ function getMaerskJobs(){
 function populateMaerskFilterOptions(){
   const maerskJobs = getMaerskJobs();
   const fYear = document.getElementById('fMaerskYear');
-  const years = [...new Set(maerskJobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)))].sort();
+  const currentYear = String(new Date().getFullYear());
+  const years = [...new Set([...maerskJobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)), currentYear])].sort();
   if(fYear.options.length<=1){
     years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
   }
@@ -1255,12 +1499,11 @@ function populateMaerskFilterOptions(){
   if(fMonth.options.length<=1){
     MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;fMonth.appendChild(o);});
   }
-  if(!maerskFiltersDefaulted && maerskJobs.length){
-    const latestDate = maerskJobs.map(j=>j.date).filter(Boolean).sort().slice(-1)[0];
-    if(latestDate){
-      fYear.value = latestDate.slice(0,4);
-      fMonth.value = latestDate.slice(5,7);
-    }
+  // Default the view to the current real-world month, once per page load —
+  // not the latest month with data, so it doesn't get stuck on an old month.
+  if(!maerskFiltersDefaulted){
+    fYear.value = currentYear;
+    fMonth.value = String(new Date().getMonth()+1).padStart(2,'0');
     maerskFiltersDefaulted = true;
   }
 }
@@ -1291,9 +1534,9 @@ function renderMaerskSummary(){
     <tr>
       <td>${fmtDate(j.date)}</td>
       <td>${j.invoice||''}</td>
-      <td>${j.driver||''}</td>
-      <td>${j.jobType||''}</td>
-      <td>${j.hostName||''}</td>
+      <td class="driver-cell">${j.driver||''}</td>
+      <td class="jobtype-cell">${j.jobType||''}</td>
+      <td class="host-cell">${j.hostName||''}</td>
       <td>${j.uid||''}</td>
       <td>${j.costCentre||''}</td>
       <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
