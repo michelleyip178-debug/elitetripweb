@@ -36,6 +36,12 @@
   table.terms td{padding:6px 8px;border-bottom:1px solid var(--line);}
   table.terms td.num{text-align:right;font-weight:700;white-space:nowrap;}
   .note{font-size:11.5px;color:var(--muted);margin-top:10px;}
+  .tc-list{margin:8px 0 0;padding-left:20px;font-size:12px;color:var(--ink);}
+  .tc-list li{margin-bottom:14px;padding-left:4px;}
+  .tc-list li::marker{font-weight:700;}
+  .tc-title{font-weight:700;font-size:12.5px;margin-bottom:4px;}
+  .tc-list p{margin:0 0 6px;color:var(--muted);line-height:1.55;}
+  .tc-list p:last-child{margin-bottom:0;}
   .footer{margin-top:26px;padding-top:14px;border-top:1px dashed var(--line);font-size:12px;color:var(--muted);}
   .signatures{display:flex;justify-content:space-between;gap:40px;margin-top:36px;}
   .sigblock{flex:1;}
@@ -126,15 +132,32 @@ Attn: Alex Loh</div>
       </tbody>
     </table>
     <div class="note">Final billing will be computed based on the actual hours worked per vehicle per day, in accordance with the rates set out above.</div>
-    <div class="note">Cancellation Policy: A cancellation fee of 100% of the total quoted amount applies if cancellation occurs 3 days before the commencement date.</div>
 
     <h3 class="section">Terms &amp; Conditions</h3>
-    <table class="terms">
-      <tr><td>Upon confirmation of booking</td><td class="num">10%</td></tr>
-      <tr><td>3 days prior to commencement date</td><td class="num">40%</td></tr>
-      <tr><td>14 days upon completion of engagement</td><td class="num">50%</td></tr>
-    </table>
-    <div class="note">The 12-hour minimum per vehicle per day will be charged in full, even if the Client requests the vehicle to stand down earlier.</div>
+    <ol class="tc-list">
+      <li>
+        <div class="tc-title">Payment Terms</div>
+        <p>A 10% deposit is payable upon confirmation of the booking. The booking will only be considered confirmed upon receipt of the deposit.</p>
+        <p>A further 40% payment is due 3 calendar days prior to the commencement date.</p>
+        <p>The remaining 50% balance is payable within 14 calendar days after completion of the engagement.</p>
+      </li>
+      <li>
+        <div class="tc-title">Cancellation Policy</div>
+        <p>Cancellation made within 3 calendar days prior to the commencement date will incur a cancellation fee equivalent to 100% of the total quoted amount. Any deposit or payments already made will be applied toward the cancellation fee, with any outstanding balance remaining payable by the Client.</p>
+      </li>
+      <li>
+        <div class="tc-title">Minimum Vehicle Hire</div>
+        <p>A minimum charge of 12 hours per vehicle per day applies. The full 12-hour minimum charge will be payable regardless of whether the Client requests the vehicle to stand down, cease operations, or be released before completion of the 12-hour minimum period.</p>
+      </li>
+      <li>
+        <div class="tc-title">Amendments</div>
+        <p>Any amendments to the booking, including changes to dates, vehicle requirements, operating hours, or scope of services, are subject to availability and must be agreed in writing. Additional charges may apply.</p>
+      </li>
+      <li>
+        <div class="tc-title">Acceptance</div>
+        <p>Confirmation of the booking constitutes the Client's acceptance of these Terms &amp; Conditions and the quoted charges.</p>
+      </li>
+    </ol>
 
     <h3 class="section">Additional Information</h3>
     <ul>
