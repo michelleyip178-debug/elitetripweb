@@ -944,8 +944,7 @@ function renderInvoiceTracking(){
     const dir = sortState.invoiceTracking.dir === 'asc' ? 1 : -1;
     rows.sort((a,b)=> dir * compareValues(acc(a), acc(b)));
   } else {
-    const statusRank = r => r.overdue ? 0 : statusClass(r.status)==='unpaid' ? 1 : statusClass(r.status)==='pending' ? 2 : 3;
-    rows.sort((a,b)=> (statusRank(a)-statusRank(b)) || (b.date||'').localeCompare(a.date||''));
+    rows.sort((a,b)=> (a.dateSent||'').localeCompare(b.dateSent||''));
   }
   updateSortArrows('invoiceTrackingTable', 'invoiceTracking');
   document.getElementById('trackCount').textContent = `${rows.length} invoice${rows.length===1?'':'s'}`;
