@@ -1754,7 +1754,8 @@ let maerskFiltersDefaulted = false;
 
 function getMaerskJobs(){
   return DATA.jobs.filter(j=>(j.company||'').trim().toUpperCase() === MAERSK_SUMMARY_COMPANY
-    && (j.costCentre||'').trim().toUpperCase().startsWith('SG51'));
+    && (j.costCentre||'').trim().toUpperCase().startsWith('SG51')
+    && j.sentFromSinadm);
 }
 
 function populateMaerskFilterOptions(){
@@ -1783,12 +1784,9 @@ function renderMaerskSummary(){
   const year = document.getElementById('fMaerskYear').value;
   const month = document.getElementById('fMaerskMonth').value;
 
-  const sinadmOnly = document.getElementById('fMaerskSinadmOnly').checked;
-
   let rows = getMaerskJobs();
   if(year) rows = rows.filter(j=>(j.date||'').slice(0,4)===year);
   if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
-  if(sinadmOnly) rows = rows.filter(j=>j.sentFromSinadm);
   rows.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
 
   const totalSales = rows.reduce((s,j)=>s+(Number(j.cost)||0),0);
@@ -1821,7 +1819,6 @@ function renderMaerskSummary(){
 }
 document.getElementById('fMaerskYear').addEventListener('change', ()=>{ pageState.maersk=1; renderMaerskSummary(); });
 document.getElementById('fMaerskMonth').addEventListener('change', ()=>{ pageState.maersk=1; renderMaerskSummary(); });
-document.getElementById('fMaerskSinadmOnly').addEventListener('change', ()=>{ pageState.maersk=1; renderMaerskSummary(); });
 
 document.getElementById('exportMaerskBtn').addEventListener('click', ()=>{
   const year = document.getElementById('fMaerskYear').value;
@@ -1829,7 +1826,6 @@ document.getElementById('exportMaerskBtn').addEventListener('click', ()=>{
   let rows = getMaerskJobs();
   if(year) rows = rows.filter(j=>(j.date||'').slice(0,4)===year);
   if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
-  if(document.getElementById('fMaerskSinadmOnly').checked) rows = rows.filter(j=>j.sentFromSinadm);
   rows = rows.filter(j=>(j.hostName||'').trim().toUpperCase() !== 'LILIAN WONG');
   rows.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
 
