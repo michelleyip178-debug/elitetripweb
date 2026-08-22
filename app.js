@@ -298,10 +298,12 @@ function renderDashboard(){
   document.getElementById('headerSub').textContent = `${jobs.length} jobs logged · ${fmtMoney(totalSales)} total sales${year?' in '+year:' YTD'}`;
 
   const today = new Date().toISOString().slice(0,10);
-  const overdueInvoiceCount = groupInvoices().filter(g=>{
+  const invoiceOverdue = {};
+  groupInvoices().forEach(g=>{
     const dueDate = (DATA.invoiceMeta||[]).find(m=>m.invoice===g.invoice)?.dueDate || addDaysISO(g.date, 30);
-    return dueDate && dueDate < today && statusClass(g.status)!=='paid';
-  }).length;
+    invoiceOverdue[g.invoice] = !!(dueDate && dueDate < today && statusClass(g.status)!=='paid');
+  });
+  const overdueInvoiceCount = Object.values(invoiceOverdue).filter(Boolean).length;
 
   document.getElementById('dashCards').innerHTML = `
     <div class="card"><div class="label">Total Jobs</div><div class="value">${jobs.length}</div></div>
@@ -329,7 +331,8 @@ function renderDashboard(){
 
   const byStatus = {};
   jobs.forEach(j=>{
-    const s = (j.paymentStatus || 'UNPAID').toUpperCase();
+    let s = (j.paymentStatus || 'UNPAID').toUpperCase();
+    if(statusClass(s)!=='paid' && j.invoice && invoiceOverdue[j.invoice]) s = 'OVERDUE';
     byStatus[s] = byStatus[s] || {jobs:0,sales:0};
     byStatus[s].jobs++;
     byStatus[s].sales += Number(j.cost)||0;
@@ -337,7 +340,7 @@ function renderDashboard(){
   const ptbody = document.querySelector('#paymentTable tbody');
   const entries = Object.entries(byStatus);
   ptbody.innerHTML = entries.length ? entries.map(([s,r])=>
-    `<tr><td><span class="pill ${statusClass(s)}">${s}</span></td><td class="num">${r.jobs}</td><td class="num">${fmtMoney(r.sales)}</td></tr>`
+    `<tr><td><span class="pill ${s==='OVERDUE' ? 'overdue' : statusClass(s)}">${s}</span></td><td class="num">${r.jobs}</td><td class="num">${fmtMoney(r.sales)}</td></tr>`
   ).join('') : `<tr><td colspan="3" class="empty">No jobs yet</td></tr>`;
 }
 document.getElementById('fDashYear').addEventListener('change', renderDashboard);
