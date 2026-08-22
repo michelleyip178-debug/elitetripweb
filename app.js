@@ -1836,7 +1836,9 @@ document.getElementById('exportMaerskBtn').addEventListener('click', ()=>{
   const headerLabels = ['Date','Invoice #','Driver','Job Type','Host','UID','Cost Centre','Trip Details','Qty','Unit Cost','Cost','Remarks'];
   const header = headerLabels.map(csvField).join(',');
   const dataRows = rows.map(j=>cols.map(c=>csvField(c==='date'?fmtDate(j[c]):j[c])).join(','));
-  const csv = [header, ...dataRows].join('\n');
+  const totalCost = rows.reduce((s,j)=>s+(Number(j.cost)||0),0);
+  const totalRow = cols.map(c=>c==='cost' ? csvField(totalCost.toFixed(2)) : c==='hostName' ? csvField('TOTAL') : '').join(',');
+  const csv = [header, ...dataRows, totalRow].join('\n');
   const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
