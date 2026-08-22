@@ -26,6 +26,7 @@
   .panel{overflow-x:auto;}
   th,td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap;}
   td .small.muted{white-space:nowrap;}
+  #invoiceTrackingTable td:nth-child(2){white-space:normal;word-break:break-word;max-width:160px;}
   td.details-cell{white-space:normal;min-width:280px;}
   td.jobtype-cell{white-space:normal;min-width:160px;}
   td.driver-cell,td.host-cell{white-space:normal;max-width:120px;}
