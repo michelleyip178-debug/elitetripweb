@@ -115,12 +115,13 @@
       <select id="fInvHost"><option value="">All Hosts</option></select>
       <select id="fInvCompany"><option value="">All Companies</option></select>
       <input type="search" id="fInvSearch" placeholder="Search invoice #, host, company…">
-      <div class="spacer"></div>
-      <span class="small muted" id="invCount"></span>
-      <button class="btn secondary" id="invoicesClearSortBtn">Clear Sort</button>
-      <button class="btn secondary" id="autoAssignBtn">Auto-Assign Invoice #s</button>
-      <button class="btn" id="generateInvoiceBtn">Generate Invoice</button>
-      <button class="btn secondary" id="generateReceiptBtn">Generate Sales Receipt</button>
+      <div class="toolbar-right">
+        <span class="small muted" id="invCount"></span>
+        <button class="btn secondary" id="invoicesClearSortBtn">Clear Sort</button>
+        <button class="btn secondary" id="autoAssignBtn">Auto-Assign Invoice #s</button>
+        <button class="btn" id="generateInvoiceBtn">Generate Invoice</button>
+        <button class="btn secondary" id="generateReceiptBtn">Generate Sales Receipt</button>
+      </div>
     </div>
     <div class="panel" style="overflow:auto;max-height:75vh;">
       <table id="invoicesTable">
