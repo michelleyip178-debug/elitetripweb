@@ -956,7 +956,7 @@ function renderInvoiceTracking(){
     return `
     <tr>
       <td><input type="checkbox" class="track-check" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" ${checked}></td>
-      <td>${r.invoice}</td>
+      <td>${r.invoice.replace(/\//g,'/<br>')}</td>
       <td class="host-cell">${r.company||r.hostName||''}</td>
       <td class="num">${fmtMoney(r.amount)}</td>
       <td><span class="pill ${overdue ? 'overdue' : statusClass(r.status)}">${displayStatus}</span></td>
