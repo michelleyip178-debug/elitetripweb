@@ -1823,12 +1823,13 @@ document.getElementById('exportMaerskBtn').addEventListener('click', ()=>{
   let rows = getMaerskJobs();
   if(year) rows = rows.filter(j=>(j.date||'').slice(0,4)===year);
   if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
+  rows = rows.filter(j=>(j.hostName||'').trim().toUpperCase() !== 'LILIAN WONG');
   rows.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
 
   if(!rows.length){ alert('No MAERSK SINGAPORE PTE LTD jobs match the current filter.'); return; }
 
-  const cols = ['date','invoice','driver','jobType','hostName','uid','costCentre','details','qty','unitCost','cost','driverPayout','coyFund','paymentStatus','remarks'];
-  const headerLabels = ['Date','Invoice #','Driver','Job Type','Host','UID','Cost Centre','Trip Details','Qty','Unit Cost','Cost','Driver Payout','Company Fund','Payment Status','Remarks'];
+  const cols = ['date','invoice','driver','jobType','hostName','uid','costCentre','details','qty','unitCost','cost','remarks'];
+  const headerLabels = ['Date','Invoice #','Driver','Job Type','Host','UID','Cost Centre','Trip Details','Qty','Unit Cost','Cost','Remarks'];
   const header = headerLabels.map(csvField).join(',');
   const dataRows = rows.map(j=>cols.map(c=>csvField(c==='date'?fmtDate(j[c]):j[c])).join(','));
   const csv = [header, ...dataRows].join('\n');
