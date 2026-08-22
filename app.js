@@ -759,6 +759,59 @@ document.getElementById('generateInvoiceBtn').addEventListener('click', ()=>{
   window.open(`invoice.html?${params}`, '_blank');
 });
 
+// ---------- Sales receipts ----------
+// Generated on demand, only after payment — a separate numbering series from
+// invoices (resets monthly), persisted on the job(s) so re-printing reuses it.
+const RECEIPT_PREFIX = WORKSPACE === 'nonmaersk' ? 'ESR' : 'MSR';
+function nextReceiptSeqForMonth(yyyymm){
+  let max = 0;
+  const re = new RegExp('^'+RECEIPT_PREFIX+yyyymm+'(\\d{4})');
+  DATA.jobs.forEach(j=>{
+    if(j.salesReceipt){
+      const m = j.salesReceipt.match(re);
+      if(m) max = Math.max(max, parseInt(m[1],10));
+    }
+  });
+  return max+1;
+}
+document.getElementById('generateReceiptBtn').addEventListener('click', async ()=>{
+  if(selectedInvoices.size===0){ alert('Select at least one invoice to generate a sales receipt for.'); return; }
+  const invNums = [...selectedInvoices];
+  const jobs = DATA.jobs.filter(j=>invNums.includes(j.invoice));
+  const unpaid = jobs.filter(j=>(j.paymentStatus||'').toUpperCase()!=='PAID');
+  if(unpaid.length){
+    alert(`${unpaid.length} job(s) under the selected invoice(s) are not marked PAID yet. Sales receipts can only be generated after payment — mark them as paid first.`);
+    return;
+  }
+
+  const seqByMonth = {};
+  const toAssign = [];
+  invNums.forEach(inv=>{
+    const invJobs = jobs.filter(j=>j.invoice===inv);
+    if(invJobs.length && invJobs.every(j=>j.salesReceipt)) return;
+    const dates = invJobs.map(j=>j.date).filter(Boolean);
+    const earliest = dates.length ? dates.reduce((a,b)=>a<b?a:b) : '';
+    if(!earliest) return;
+    const yyyymm = earliest.slice(0,4)+earliest.slice(5,7);
+    if(seqByMonth[yyyymm] == null) seqByMonth[yyyymm] = nextReceiptSeqForMonth(yyyymm);
+    const seq = seqByMonth[yyyymm]++;
+    toAssign.push({ rcptNum: `${RECEIPT_PREFIX}${yyyymm}${String(seq).padStart(4,'0')}`, jobs: invJobs });
+  });
+
+  for(const a of toAssign){
+    const ids = a.jobs.map(j=>j.id);
+    const {error} = await sb.from(TBL.jobs).update({salesReceipt:a.rcptNum}).in('id', ids);
+    if(error){ alert('Failed to assign sales receipt '+a.rcptNum+': '+error.message); return; }
+    a.jobs.forEach(j=>{ j.salesReceipt = a.rcptNum; });
+  }
+  renderAll();
+
+  const rcptNums = [...new Set(jobs.map(j=>j.salesReceipt).filter(Boolean))];
+  if(!rcptNums.length){ alert('Could not assign a sales receipt — selected jobs are missing a date.'); return; }
+  const params = new URLSearchParams({ ws: WORKSPACE, rcpt: rcptNums.join(',') });
+  window.open(`receipt.html?${params}`, '_blank');
+});
+
 // ---------- Invoice Tracking (due date / payment date, one row per invoice #) ----------
 sortState.invoiceTracking = null;
 let trackFiltersDefaulted = false;
