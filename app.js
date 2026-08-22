@@ -624,7 +624,6 @@ function renderInvoices(_skipFit){
   renderPagination('invoicesPagination', 'invoices', page, totalPages, renderInvoices);
   const checkable = [...document.querySelectorAll('.inv-check')];
   document.getElementById('invSelectAll').checked = checkable.length>0 && checkable.every(c=>c.checked);
-  updateMarkPaidBtnLabel();
 }
 document.getElementById('fInvSearch').addEventListener('input', ()=>{ pageState.invoices=1; renderInvoices(); });
 document.getElementById('fInvDate').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
@@ -633,15 +632,6 @@ document.getElementById('fInvMonth').addEventListener('change', ()=>{ pageState.
 document.getElementById('fInvHost').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
 document.getElementById('fInvCompany').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
 
-// "Mark as Paid" toggles to "Mark as Unpaid" once every job under the
-// selected invoice(s) is already PAID — a smart toggle, not two buttons.
-function updateMarkPaidBtnLabel(){
-  const btn = document.getElementById('markPaidBtn');
-  if(!btn) return;
-  const jobs = DATA.jobs.filter(j=>selectedInvoices.has(j.invoice));
-  const allPaid = jobs.length>0 && jobs.every(j=>(j.paymentStatus||'').toUpperCase()==='PAID');
-  btn.textContent = allPaid ? 'Mark as Unpaid' : 'Mark as Paid';
-}
 document.querySelector('#invoicesTable tbody').addEventListener('change', e=>{
   if(e.target.matches('.inv-check')){
     const inv = decodeURIComponent(e.target.dataset.inv);
@@ -649,7 +639,6 @@ document.querySelector('#invoicesTable tbody').addEventListener('change', e=>{
     // Sync other rows sharing the same invoice # on this page.
     document.querySelectorAll(`.inv-check[data-inv="${e.target.dataset.inv}"]`).forEach(c=>c.checked = e.target.checked);
     document.getElementById('invSelectAll').checked = [...document.querySelectorAll('.inv-check')].every(c=>c.checked);
-    updateMarkPaidBtnLabel();
   }
 });
 document.getElementById('invSelectAll').addEventListener('change', e=>{
@@ -658,7 +647,6 @@ document.getElementById('invSelectAll').addEventListener('change', e=>{
     c.checked = e.target.checked;
     if(e.target.checked) selectedInvoices.add(inv); else selectedInvoices.delete(inv);
   });
-  updateMarkPaidBtnLabel();
 });
 
 // ---------- Auto-assign invoice numbers ----------
@@ -758,23 +746,6 @@ function csvField(v){
   if(/[",\n]/.test(v)) return '"'+v.replace(/"/g,'""')+'"';
   return v;
 }
-document.getElementById('markPaidBtn').addEventListener('click', async ()=>{
-  if(selectedInvoices.size===0){ alert('Select at least one invoice.'); return; }
-  const invNums = [...selectedInvoices];
-  const jobs = DATA.jobs.filter(j=>invNums.includes(j.invoice));
-  if(jobs.length===0){ alert('No jobs found for the selected invoice(s).'); return; }
-
-  const allPaid = jobs.every(j=>(j.paymentStatus||'').toUpperCase()==='PAID');
-  const target = allPaid ? 'UNPAID' : 'PAID';
-  if(!confirm(`Mark ${jobs.length} job(s) across ${invNums.length} invoice(s) as ${target}?`)) return;
-
-  const ids = jobs.map(j=>j.id);
-  const {error} = await sb.from(TBL.jobs).update({paymentStatus:target}).in('id', ids);
-  if(error){ alert('Failed to update status: '+error.message); return; }
-  jobs.forEach(j=>{ j.paymentStatus = target; });
-  renderAll();
-  alert(`Marked ${jobs.length} job(s) as ${target}.`);
-});
 document.getElementById('generateInvoiceBtn').addEventListener('click', ()=>{
   if(selectedInvoices.size===0){ alert('Select at least one invoice to generate.'); return; }
   const params = new URLSearchParams({ ws: WORKSPACE, inv: [...selectedInvoices].join(',') });
@@ -837,6 +808,16 @@ const INVOICE_TRACKING_SORT_ACCESSORS = {
   dueDate: r=>r.dueDate||'',
   paymentDate: r=>r.paymentDate||'',
 };
+const selectedTrackInvoices = new Set();
+// "Mark as Paid" toggles to "Mark as Unpaid" once every job under the
+// selected invoice(s) is already PAID — a smart toggle, not two buttons.
+function updateTrackMarkPaidBtnLabel(){
+  const btn = document.getElementById('trackMarkPaidBtn');
+  if(!btn) return;
+  const jobs = DATA.jobs.filter(j=>selectedTrackInvoices.has(j.invoice));
+  const allPaid = jobs.length>0 && jobs.every(j=>(j.paymentStatus||'').toUpperCase()==='PAID');
+  btn.textContent = allPaid ? 'Mark as Unpaid' : 'Mark as Paid';
+}
 function renderInvoiceTracking(){
   let rows = groupInvoices();
   populateTrackFilterOptions(rows);
@@ -871,8 +852,10 @@ function renderInvoiceTracking(){
   document.querySelector('#invoiceTrackingTable tbody').innerHTML = rows.length ? rows.map(r=>{
     const overdue = r.dueDate && r.dueDate < today && statusClass(r.status)!=='paid';
     const displayStatus = overdue ? 'OVERDUE' : r.status;
+    const checked = selectedTrackInvoices.has(r.invoice) ? 'checked' : '';
     return `
     <tr>
+      <td><input type="checkbox" class="track-check" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" ${checked}></td>
       <td>${r.invoice}</td>
       <td>${fmtDate(r.date)}</td>
       <td class="host-cell">${r.hostName||''}${r.company?`<div class="small muted">${r.company}</div>`:''}</td>
@@ -881,7 +864,10 @@ function renderInvoiceTracking(){
       <td><input type="date" class="trackDueDate" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.dueDate||''}" style="${overdue?'border-color:var(--red);color:var(--red);':''}"></td>
       <td><input type="date" class="trackPaymentDate" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.paymentDate||''}"></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="7" class="empty">No invoices match these filters</td></tr>`;
+  }).join('') : `<tr><td colspan="8" class="empty">No invoices match these filters</td></tr>`;
+  const trackCheckable = [...document.querySelectorAll('.track-check')];
+  document.getElementById('trackSelectAll').checked = trackCheckable.length>0 && trackCheckable.every(c=>c.checked);
+  updateTrackMarkPaidBtnLabel();
 }
 async function upsertInvoiceMeta(invoice, patch){
   const existing = (DATA.invoiceMeta||[]).find(m=>m.invoice===invoice);
@@ -901,7 +887,36 @@ document.querySelector('#invoiceTrackingTable tbody').addEventListener('change',
     upsertInvoiceMeta(e.target.dataset.invoice, {dueDate: e.target.value || null}).then(()=>renderInvoiceTracking());
   } else if(e.target.matches('.trackPaymentDate')){
     upsertInvoiceMeta(e.target.dataset.invoice, {paymentDate: e.target.value || null}).then(()=>renderInvoiceTracking());
+  } else if(e.target.matches('.track-check')){
+    const inv = e.target.dataset.invoice;
+    if(e.target.checked) selectedTrackInvoices.add(inv); else selectedTrackInvoices.delete(inv);
+    document.getElementById('trackSelectAll').checked = [...document.querySelectorAll('.track-check')].every(c=>c.checked);
+    updateTrackMarkPaidBtnLabel();
   }
+});
+document.getElementById('trackSelectAll').addEventListener('change', e=>{
+  document.querySelectorAll('.track-check').forEach(c=>{
+    c.checked = e.target.checked;
+    if(e.target.checked) selectedTrackInvoices.add(c.dataset.invoice); else selectedTrackInvoices.delete(c.dataset.invoice);
+  });
+  updateTrackMarkPaidBtnLabel();
+});
+document.getElementById('trackMarkPaidBtn').addEventListener('click', async ()=>{
+  if(selectedTrackInvoices.size===0){ alert('Select at least one invoice.'); return; }
+  const invNums = [...selectedTrackInvoices];
+  const jobs = DATA.jobs.filter(j=>invNums.includes(j.invoice));
+  if(jobs.length===0){ alert('No jobs found for the selected invoice(s).'); return; }
+
+  const allPaid = jobs.every(j=>(j.paymentStatus||'').toUpperCase()==='PAID');
+  const target = allPaid ? 'UNPAID' : 'PAID';
+  if(!confirm(`Mark ${jobs.length} job(s) across ${invNums.length} invoice(s) as ${target}?`)) return;
+
+  const ids = jobs.map(j=>j.id);
+  const {error} = await sb.from(TBL.jobs).update({paymentStatus:target}).in('id', ids);
+  if(error){ alert('Failed to update status: '+error.message); return; }
+  jobs.forEach(j=>{ j.paymentStatus = target; });
+  renderAll();
+  alert(`Marked ${jobs.length} job(s) as ${target}.`);
 });
 wireSortableHeaders('invoiceTrackingTable', 'invoiceTracking', ()=>renderInvoiceTracking());
 ['fTrackYear','fTrackMonth','fTrackShowPaid'].forEach(id=>document.getElementById(id).addEventListener('change', renderInvoiceTracking));

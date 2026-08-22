@@ -119,7 +119,6 @@
       <span class="small muted" id="invCount"></span>
       <button class="btn secondary" id="invoicesClearSortBtn">Clear Sort</button>
       <button class="btn secondary" id="autoAssignBtn">Auto-Assign Invoice #s</button>
-      <button class="btn secondary" id="markPaidBtn">Mark as Paid</button>
       <button class="btn" id="generateInvoiceBtn">Generate Invoice</button>
     </div>
     <div class="panel" style="overflow:auto;max-height:75vh;">
@@ -155,10 +154,12 @@
       <input type="search" id="fTrackSearch" placeholder="Search invoice #, host, company…">
       <div class="spacer"></div>
       <span class="small muted" id="trackCount"></span>
+      <button class="btn secondary" id="trackMarkPaidBtn">Mark as Paid</button>
     </div>
     <div class="panel" style="overflow:auto;max-height:75vh;">
       <table id="invoiceTrackingTable">
         <thead><tr>
+          <th><input type="checkbox" id="trackSelectAll"></th>
           <th class="sortable" data-key="invoice">Invoice #<span class="sortArrow"></span></th>
           <th class="sortable" data-key="date">Date<span class="sortArrow"></span></th>
           <th class="sortable" data-key="hostName">Host / Company<span class="sortArrow"></span></th>
