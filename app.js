@@ -970,11 +970,27 @@ async function upsertInvoiceMeta(invoice, patch){
     DATA.invoiceMeta.push(data[0]);
   }
 }
+// Setting a Payment Date is how a real payment gets recorded, so it should
+// flip the underlying job(s) to PAID too — not just sit next to an UNPAID pill.
+// Clearing the date reverses it back to UNPAID.
+async function setJobsPaymentStatus(invoice, status){
+  const jobs = DATA.jobs.filter(j=>j.invoice===invoice);
+  if(!jobs.length) return;
+  const ids = jobs.map(j=>j.id);
+  const {error} = await sb.from(TBL.jobs).update({paymentStatus:status}).in('id', ids);
+  if(error){ alert('Failed to update payment status: '+error.message); return; }
+  jobs.forEach(j=>{ j.paymentStatus = status; });
+}
 document.querySelector('#invoiceTrackingTable tbody').addEventListener('change', (e)=>{
   if(e.target.matches('.trackDueDate')){
     upsertInvoiceMeta(e.target.dataset.invoice, {dueDate: e.target.value || null}).then(()=>renderInvoiceTracking());
   } else if(e.target.matches('.trackPaymentDate')){
-    upsertInvoiceMeta(e.target.dataset.invoice, {paymentDate: e.target.value || null}).then(()=>renderInvoiceTracking());
+    const invoice = e.target.dataset.invoice;
+    const paymentDate = e.target.value || null;
+    Promise.all([
+      upsertInvoiceMeta(invoice, {paymentDate}),
+      setJobsPaymentStatus(invoice, paymentDate ? 'PAID' : 'UNPAID'),
+    ]).then(()=>renderAll());
   } else if(e.target.matches('.track-check')){
     const inv = e.target.dataset.invoice;
     if(e.target.checked) selectedTrackInvoices.add(inv); else selectedTrackInvoices.delete(inv);
