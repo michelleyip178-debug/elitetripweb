@@ -870,13 +870,14 @@ function renderInvoiceTracking(){
 
   document.querySelector('#invoiceTrackingTable tbody').innerHTML = rows.length ? rows.map(r=>{
     const overdue = r.dueDate && r.dueDate < today && statusClass(r.status)!=='paid';
+    const displayStatus = overdue ? 'OVERDUE' : r.status;
     return `
     <tr>
       <td>${r.invoice}</td>
       <td>${fmtDate(r.date)}</td>
       <td class="host-cell">${r.hostName||''}${r.company?`<div class="small muted">${r.company}</div>`:''}</td>
       <td class="num">${fmtMoney(r.amount)}</td>
-      <td><span class="pill ${statusClass(r.status)}">${r.status}</span></td>
+      <td><span class="pill ${statusClass(r.status)}">${displayStatus}</span></td>
       <td><input type="date" class="trackDueDate" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.dueDate||''}" style="${overdue?'border-color:var(--red);color:var(--red);':''}"></td>
       <td><input type="date" class="trackPaymentDate" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.paymentDate||''}"></td>
     </tr>`;
