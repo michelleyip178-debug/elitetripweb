@@ -318,8 +318,7 @@ function renderDashboard(){
   const today = new Date().toISOString().slice(0,10);
   const invoiceOverdue = {};
   groupInvoices().forEach(g=>{
-    const dueDate = (DATA.invoiceMeta||[]).find(m=>m.invoice===g.invoice)?.dueDate || addDaysISO(g.date, 30);
-    invoiceOverdue[g.invoice] = !!(dueDate && dueDate < today && statusClass(g.status)!=='paid');
+    invoiceOverdue[g.invoice] = !!(g.dueDate && g.dueDate < today && statusClass(g.status)!=='paid');
   });
   const overdueInvoiceCount = Object.values(invoiceOverdue).filter(Boolean).length;
 
@@ -836,10 +835,17 @@ document.getElementById('generateReceiptBtn').addEventListener('click', async ()
 // ---------- Invoice Tracking (due date / payment date, one row per invoice #) ----------
 sortState.invoiceTracking = null;
 let trackFiltersDefaulted = false;
-function addDaysISO(dateStr, days){
+// Adds working days only (skips Sat/Sun) — used for the due date, which counts
+// from when the invoice was actually sent, not from the job date.
+function addWorkingDaysISO(dateStr, days){
   if(!dateStr) return '';
   const d = new Date(dateStr+'T00:00:00');
-  d.setDate(d.getDate()+days);
+  let added = 0;
+  while(added < days){
+    d.setDate(d.getDate()+1);
+    const dow = d.getDay();
+    if(dow !== 0 && dow !== 6) added++;
+  }
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 function groupInvoices(){
@@ -859,9 +865,11 @@ function groupInvoices(){
     const status = g.statuses.some(s=>statusClass(s)==='unpaid') ? 'UNPAID'
       : g.statuses.some(s=>statusClass(s)==='pending') ? 'PENDING' : 'PAID';
     const meta = (DATA.invoiceMeta||[]).find(m=>m.invoice===g.invoice);
-    // Due date defaults to 30 days from the invoice's (earliest job's) date,
-    // matching the invoice PDF, unless it's been manually set here.
-    return { ...g, status, dueDate: meta?.dueDate || addDaysISO(g.date, 30), paymentDate: meta?.paymentDate || '' };
+    const dateSent = meta?.dateSent || '';
+    // Due date defaults to 30 working days from when the invoice was sent
+    // (blank until a Date Sent is recorded), unless manually overridden here.
+    const dueDate = meta?.dueDate || (dateSent ? addWorkingDaysISO(dateSent, 30) : '');
+    return { ...g, status, dateSent, dueDate, paymentDate: meta?.paymentDate || '' };
   });
 }
 function populateTrackFilterOptions(rows){
@@ -883,10 +891,10 @@ function populateTrackFilterOptions(rows){
 }
 const INVOICE_TRACKING_SORT_ACCESSORS = {
   invoice: r=>r.invoice||'',
-  date: r=>r.date||'',
   hostName: r=>r.hostName||'',
   amount: r=>r.amount||0,
   status: r=>r.status||'',
+  dateSent: r=>r.dateSent||'',
   dueDate: r=>r.dueDate||'',
   paymentDate: r=>r.paymentDate||'',
 };
@@ -941,10 +949,10 @@ function renderInvoiceTracking(){
     <tr>
       <td><input type="checkbox" class="track-check" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" ${checked}></td>
       <td>${r.invoice}</td>
-      <td>${fmtDate(r.date)}</td>
       <td class="host-cell">${r.company||r.hostName||''}</td>
       <td class="num">${fmtMoney(r.amount)}</td>
       <td><span class="pill ${overdue ? 'overdue' : statusClass(r.status)}">${displayStatus}</span></td>
+      <td><input type="date" class="trackDateSent" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.dateSent||''}"></td>
       <td><input type="date" class="trackDueDate" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.dueDate||''}" style="${overdue?'border-color:var(--red);color:var(--red);':''}"></td>
       <td><input type="date" class="trackPaymentDate" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.paymentDate||''}"></td>
       <td class="row-actions">
@@ -982,7 +990,9 @@ async function setJobsPaymentStatus(invoice, status){
   jobs.forEach(j=>{ j.paymentStatus = status; });
 }
 document.querySelector('#invoiceTrackingTable tbody').addEventListener('change', (e)=>{
-  if(e.target.matches('.trackDueDate')){
+  if(e.target.matches('.trackDateSent')){
+    upsertInvoiceMeta(e.target.dataset.invoice, {dateSent: e.target.value || null}).then(()=>renderInvoiceTracking());
+  } else if(e.target.matches('.trackDueDate')){
     upsertInvoiceMeta(e.target.dataset.invoice, {dueDate: e.target.value || null}).then(()=>renderInvoiceTracking());
   } else if(e.target.matches('.trackPaymentDate')){
     const invoice = e.target.dataset.invoice;
