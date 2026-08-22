@@ -48,7 +48,8 @@
   .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
   .pill.paid{background:#e4f7ec;color:var(--green);}
   .pill.pending{background:#fff3e0;color:var(--amber);}
-  .pill.unpaid{background:#fdecea;color:var(--red);}
+  .pill.unpaid{background:#e8f0fe;color:var(--accent);}
+  .pill.overdue{background:#fdecea;color:var(--red);}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
   select,input,textarea{font-family:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);}
   .dateField{position:relative;}
