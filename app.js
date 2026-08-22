@@ -784,6 +784,12 @@ document.getElementById('generateInvoiceBtn').addEventListener('click', ()=>{
 // ---------- Invoice Tracking (due date / payment date, one row per invoice #) ----------
 sortState.invoiceTracking = null;
 let trackFiltersDefaulted = false;
+function addDaysISO(dateStr, days){
+  if(!dateStr) return '';
+  const d = new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate()+days);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function groupInvoices(){
   const groups = {};
   DATA.jobs.forEach(j=>{
@@ -800,7 +806,9 @@ function groupInvoices(){
     const status = g.statuses.some(s=>statusClass(s)==='unpaid') ? 'UNPAID'
       : g.statuses.some(s=>statusClass(s)==='pending') ? 'PENDING' : 'PAID';
     const meta = (DATA.invoiceMeta||[]).find(m=>m.invoice===g.invoice);
-    return { ...g, status, dueDate: meta?.dueDate || '', paymentDate: meta?.paymentDate || '' };
+    // Due date defaults to 30 days from the invoice's (earliest job's) date,
+    // matching the invoice PDF, unless it's been manually set here.
+    return { ...g, status, dueDate: meta?.dueDate || addDaysISO(g.date, 30), paymentDate: meta?.paymentDate || '' };
   });
 }
 function populateTrackFilterOptions(rows){
