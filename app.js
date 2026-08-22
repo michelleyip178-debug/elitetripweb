@@ -801,8 +801,8 @@ function populateTrackFilterOptions(rows){
     MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;fMonth.appendChild(o);});
   }
   if(!trackFiltersDefaulted){
-    fYear.value = currentYear;
-    fMonth.value = String(new Date().getMonth()+1).padStart(2,'0');
+    fYear.value = '';
+    fMonth.value = '';
     trackFiltersDefaulted = true;
   }
 }
