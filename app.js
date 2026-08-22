@@ -826,12 +826,13 @@ function groupInvoices(){
   DATA.jobs.forEach(j=>{
     if(!j.invoice) return;
     if(!groups[j.invoice]){
-      groups[j.invoice] = { invoice: j.invoice, date: j.date, hostName: j.hostName, company: j.company, amount: 0, statuses: [] };
+      groups[j.invoice] = { invoice: j.invoice, date: j.date, hostName: j.hostName, company: j.company, amount: 0, statuses: [], salesReceipt: '' };
     }
     const g = groups[j.invoice];
     if(j.date && (!g.date || j.date < g.date)) g.date = j.date;
     g.amount += (Number(j.qty)||0)*(Number(j.unitCost)||0) + optionsByJob(j.id).reduce((s,o)=>s+(Number(o.amount)||0),0);
     g.statuses.push((j.paymentStatus||'UNPAID').toUpperCase());
+    if(j.salesReceipt && !g.salesReceipt) g.salesReceipt = j.salesReceipt;
   });
   return Object.values(groups).map(g=>{
     const status = g.statuses.some(s=>statusClass(s)==='unpaid') ? 'UNPAID'
@@ -925,8 +926,12 @@ function renderInvoiceTracking(){
       <td><span class="pill ${overdue ? 'overdue' : statusClass(r.status)}">${displayStatus}</span></td>
       <td><input type="date" class="trackDueDate" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.dueDate||''}" style="${overdue?'border-color:var(--red);color:var(--red);':''}"></td>
       <td><input type="date" class="trackPaymentDate" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.paymentDate||''}"></td>
+      <td class="row-actions">
+        <button onclick="window.open('invoice.html?${new URLSearchParams({ws:WORKSPACE,inv:r.invoice})}','_blank')">View Invoice</button>
+        ${r.salesReceipt ? `<button onclick="window.open('receipt.html?${new URLSearchParams({ws:WORKSPACE,rcpt:r.salesReceipt})}','_blank')">View Receipt</button>` : ''}
+      </td>
     </tr>`;
-  }).join('') : `<tr><td colspan="8" class="empty">No invoices match these filters</td></tr>`;
+  }).join('') : `<tr><td colspan="9" class="empty">No invoices match these filters</td></tr>`;
   const trackCheckable = [...document.querySelectorAll('.track-check')];
   document.getElementById('trackSelectAll').checked = trackCheckable.length>0 && trackCheckable.every(c=>c.checked);
   updateTrackMarkPaidBtnLabel();
