@@ -70,7 +70,7 @@
   button.btn.danger{background:#fdecea;color:var(--red);}
   button.btn:hover{filter:brightness(0.96);}
   .spacer{flex:1;}
-  .toolbar-right{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end;flex:1;}
+  .toolbar-right{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end;flex-basis:100%;}
   .modal-bg{display:none;position:fixed;inset:0;background:rgba(20,24,34,.45);z-index:50;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 16px;}
   .modal-bg.active{display:flex;}
   .modal{background:#fff;border-radius:12px;width:100%;max-width:640px;padding:22px;}
