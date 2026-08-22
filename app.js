@@ -1790,7 +1790,9 @@ function renderMaerskSummary(){
   if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
   rows.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
 
-  const totalSales = rows.reduce((s,j)=>s+(Number(j.cost)||0)+optionsByJob(j.id).reduce((os,o)=>os+(Number(o.amount)||0),0),0);
+  // j.cost is already qty*unitCost + additional options (see computedCost in
+  // the job form), so summing it plus optionsByJob() again would double-count.
+  const totalSales = rows.reduce((s,j)=>s+(Number(j.cost)||0),0);
   const totalPayout = rows.reduce((s,j)=>s+(Number(j.driverPayout)||0),0);
   const totalCoy = rows.reduce((s,j)=>s+(Number(j.coyFund)||0),0);
   document.getElementById('maerskCards').innerHTML = `
@@ -1814,7 +1816,7 @@ function renderMaerskSummary(){
       <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${j.qty ?? ''}</td>
       <td class="num">${fmtMoney(j.unitCost)}</td>
-      <td class="num">${fmtMoney(j.cost)}</td>
+      <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
     </tr>
     ${optionsByJob(j.id).map(o=>`
     <tr>
@@ -1850,7 +1852,14 @@ document.getElementById('exportMaerskBtn').addEventListener('click', ()=>{
   const headerLabels = ['Date','Invoice #','Driver','Job Type','Host','UID','Cost Centre','Trip Details','Qty','Unit Cost','Cost','Remarks'];
   const header = headerLabels.map(csvField).join(',');
   const dataRows = rows.flatMap(j=>{
-    const jobRow = cols.map(c=>csvField(c==='date'?fmtDate(j[c]):j[c])).join(',');
+    // j.cost already includes additional options (see computedCost in the job
+    // form), so the job's own row shows the base qty*unitCost only — the
+    // option row(s) below carry the rest, and together they add up correctly.
+    const jobRow = cols.map(c=>{
+      if(c==='date') return csvField(fmtDate(j.date));
+      if(c==='cost') return csvField(((Number(j.qty)||0)*(Number(j.unitCost)||0)).toFixed(2));
+      return csvField(j[c]);
+    }).join(',');
     const optionRows = optionsByJob(j.id).map(o=>cols.map(c=>{
       if(c==='date') return csvField(fmtDate(j.date));
       if(c==='invoice') return csvField(j.invoice);
@@ -1867,7 +1876,7 @@ document.getElementById('exportMaerskBtn').addEventListener('click', ()=>{
     }).join(','));
     return [jobRow, ...optionRows];
   });
-  const totalCost = rows.reduce((s,j)=>s+(Number(j.cost)||0)+optionsByJob(j.id).reduce((os,o)=>os+(Number(o.amount)||0),0),0);
+  const totalCost = rows.reduce((s,j)=>s+(Number(j.cost)||0),0);
   const totalRow = cols.map(c=>c==='cost' ? csvField(totalCost.toFixed(2)) : c==='hostName' ? csvField('TOTAL') : '').join(',');
   const csv = [header, ...dataRows, totalRow].join('\n');
   const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
