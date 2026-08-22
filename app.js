@@ -9,7 +9,7 @@ document.querySelector('.login-box .sub').textContent = `Sign in to access the $
 // and the MAERSK Summary tab (filters by MAERSK SINGAPORE PTE LTD + SG51 cost
 // centre) is irrelevant for ELITE.
 if(WORKSPACE === 'nonmaersk'){
-  ['uidFieldWrap','costCentreFieldWrap','maerskNavBtn'].forEach(id=>{
+  ['uidFieldWrap','costCentreFieldWrap','sinadmFieldWrap','maerskNavBtn'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
@@ -1585,6 +1585,7 @@ async function openJobModal(id){
   document.getElementById('f_company').value = job?.company || '';
   document.getElementById('f_costCentre').value = job?.costCentre || '';
   document.getElementById('f_uid').value = job?.uid || '';
+  document.getElementById('f_sinadm').checked = !!job?.sentFromSinadm;
   document.getElementById('f_pax').value = job ? (extractPax(job.details) || '') : '';
   document.getElementById('f_details').value = job ? extractRoute(job.details) : '';
   document.getElementById('f_start').value = job?.startTime || '';
@@ -1675,6 +1676,7 @@ document.getElementById('saveJobBtn').addEventListener('click', async ()=>{
     company: document.getElementById('f_company').value,
     costCentre: document.getElementById('f_costCentre').value,
     uid,
+    sentFromSinadm: document.getElementById('f_sinadm').checked,
     details: buildTripDetails({hostName, uid, costCentre: document.getElementById('f_costCentre').value, pax, itinerary, driver, startTime, endTime, jobType: document.getElementById('f_jobType').value}),
     startTime,
     endTime,
@@ -1781,9 +1783,12 @@ function renderMaerskSummary(){
   const year = document.getElementById('fMaerskYear').value;
   const month = document.getElementById('fMaerskMonth').value;
 
+  const sinadmOnly = document.getElementById('fMaerskSinadmOnly').checked;
+
   let rows = getMaerskJobs();
   if(year) rows = rows.filter(j=>(j.date||'').slice(0,4)===year);
   if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
+  if(sinadmOnly) rows = rows.filter(j=>j.sentFromSinadm);
   rows.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
 
   const totalSales = rows.reduce((s,j)=>s+(Number(j.cost)||0),0);
@@ -1816,6 +1821,7 @@ function renderMaerskSummary(){
 }
 document.getElementById('fMaerskYear').addEventListener('change', ()=>{ pageState.maersk=1; renderMaerskSummary(); });
 document.getElementById('fMaerskMonth').addEventListener('change', ()=>{ pageState.maersk=1; renderMaerskSummary(); });
+document.getElementById('fMaerskSinadmOnly').addEventListener('change', ()=>{ pageState.maersk=1; renderMaerskSummary(); });
 
 document.getElementById('exportMaerskBtn').addEventListener('click', ()=>{
   const year = document.getElementById('fMaerskYear').value;
@@ -1823,6 +1829,7 @@ document.getElementById('exportMaerskBtn').addEventListener('click', ()=>{
   let rows = getMaerskJobs();
   if(year) rows = rows.filter(j=>(j.date||'').slice(0,4)===year);
   if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
+  if(document.getElementById('fMaerskSinadmOnly').checked) rows = rows.filter(j=>j.sentFromSinadm);
   rows = rows.filter(j=>(j.hostName||'').trim().toUpperCase() !== 'LILIAN WONG');
   rows.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
 

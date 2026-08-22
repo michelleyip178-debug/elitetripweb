@@ -252,6 +252,7 @@
     <div class="toolbar">
       <select id="fMaerskYear"><option value="">All Years</option></select>
       <select id="fMaerskMonth"><option value="">All Months</option></select>
+      <label class="small muted" style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><input type="checkbox" id="fMaerskSinadmOnly"> Only SINADM</label>
       <div class="spacer"></div>
       <span class="small muted" id="maerskCount"></span>
       <button class="btn" id="exportMaerskBtn">Export MAERSK Summary (CSV)</button>
@@ -300,6 +301,7 @@
       <div id="companyFieldWrap"><label>Company</label><input type="text" id="f_company"></div>
       <div id="uidFieldWrap"><label>UID</label><input type="text" id="f_uid"></div>
       <div id="costCentreFieldWrap"><label>Cost Centre</label><input type="text" id="f_costCentre"></div>
+      <div id="sinadmFieldWrap"><label>&nbsp;</label><label style="text-transform:none;font-weight:400;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="f_sinadm" style="width:auto;"> Sent from SINADM</label></div>
       <div><label>PAX</label><input type="text" id="f_pax" placeholder="e.g. 3 PAX"></div>
 
       <div class="full"><label>Itinerary</label><textarea id="f_details" rows="3" placeholder="e.g. PLQ 1 - Fairmont Singapore - PLQ 1"></textarea></div>
