@@ -297,11 +297,18 @@ function renderDashboard(){
   const totalCoy = jobs.reduce((s,j)=>s+(Number(j.coyFund)||0),0);
   document.getElementById('headerSub').textContent = `${jobs.length} jobs logged · ${fmtMoney(totalSales)} total sales${year?' in '+year:' YTD'}`;
 
+  const today = new Date().toISOString().slice(0,10);
+  const overdueInvoiceCount = groupInvoices().filter(g=>{
+    const dueDate = (DATA.invoiceMeta||[]).find(m=>m.invoice===g.invoice)?.dueDate || addDaysISO(g.date, 30);
+    return dueDate && dueDate < today && statusClass(g.status)!=='paid';
+  }).length;
+
   document.getElementById('dashCards').innerHTML = `
     <div class="card"><div class="label">Total Jobs</div><div class="value">${jobs.length}</div></div>
     <div class="card"><div class="label">Total Sales</div><div class="value">${fmtMoney(totalSales)}</div></div>
     <div class="card"><div class="label">Driver Payout</div><div class="value">${fmtMoney(totalPayout)}</div></div>
     <div class="card"><div class="label">Company Fund</div><div class="value">${fmtMoney(totalCoy)}</div></div>
+    <div class="card"><div class="label">Overdue Invoices</div><div class="value">${overdueInvoiceCount}</div></div>
   `;
 
   const byMonth = {};
