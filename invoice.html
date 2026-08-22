@@ -25,10 +25,16 @@
   .invoice-billto div{font-size:13px;white-space:pre-line;line-height:1.55;}
   .invoice-meta{flex:0 0 auto;}
 
-  .invoice-doc table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .invoice-doc table{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed;}
   .invoice-doc th{background:#dde1e8;border:none;text-align:left;padding:8px;text-transform:uppercase;font-size:10.5px;letter-spacing:.03em;color:#4b5265;font-weight:700;}
   .invoice-doc th.num{text-align:right;}
-  .invoice-doc td{padding:8px;vertical-align:top;white-space:pre-line;border:none;border-bottom:1px solid var(--line);}
+  .invoice-doc td{padding:8px;vertical-align:top;white-space:pre-line;border:none;border-bottom:1px solid var(--line);word-wrap:break-word;}
+  .invoice-doc th:nth-child(1),.invoice-doc td:nth-child(1){width:9%;}
+  .invoice-doc th:nth-child(2),.invoice-doc td:nth-child(2){width:15%;}
+  .invoice-doc th:nth-child(3),.invoice-doc td:nth-child(3){width:38%;}
+  .invoice-doc th:nth-child(4),.invoice-doc td:nth-child(4){width:8%;}
+  .invoice-doc th:nth-child(5),.invoice-doc td:nth-child(5){width:14%;}
+  .invoice-doc th:nth-child(6),.invoice-doc td:nth-child(6){width:16%;}
   .invoice-doc tr{break-inside:avoid;}
 
   .invoice-meta table{width:auto;border-collapse:collapse;}
