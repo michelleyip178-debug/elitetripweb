@@ -1790,7 +1790,7 @@ function renderMaerskSummary(){
   if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
   rows.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
 
-  const totalSales = rows.reduce((s,j)=>s+(Number(j.cost)||0),0);
+  const totalSales = rows.reduce((s,j)=>s+(Number(j.cost)||0)+optionsByJob(j.id).reduce((os,o)=>os+(Number(o.amount)||0),0),0);
   const totalPayout = rows.reduce((s,j)=>s+(Number(j.driverPayout)||0),0);
   const totalCoy = rows.reduce((s,j)=>s+(Number(j.coyFund)||0),0);
   document.getElementById('maerskCards').innerHTML = `
@@ -1815,7 +1815,21 @@ function renderMaerskSummary(){
       <td class="num">${j.qty ?? ''}</td>
       <td class="num">${fmtMoney(j.unitCost)}</td>
       <td class="num">${fmtMoney(j.cost)}</td>
-    </tr>`).join('') : `<tr><td colspan="11" class="empty">No MAERSK SINGAPORE PTE LTD jobs found</td></tr>`;
+    </tr>
+    ${optionsByJob(j.id).map(o=>`
+    <tr>
+      <td>${fmtDate(j.date)}</td>
+      <td>${j.invoice||''}</td>
+      <td class="driver-cell">${j.driver||''}</td>
+      <td class="jobtype-cell">${fmtOptionLabel(o)}</td>
+      <td class="host-cell">${j.hostName||''}</td>
+      <td>${j.uid||''}</td>
+      <td>${j.costCentre||''}</td>
+      <td class="details-cell">${renderOptionDetailsCell(j, o)}</td>
+      <td class="num">1</td>
+      <td class="num">${fmtMoney(o.amount)}</td>
+      <td class="num">${fmtMoney(o.amount)}</td>
+    </tr>`).join('')}`).join('') : `<tr><td colspan="11" class="empty">No MAERSK SINGAPORE PTE LTD jobs found</td></tr>`;
   renderPagination('maerskPagination', 'maersk', page, totalPages, renderMaerskSummary);
 }
 document.getElementById('fMaerskYear').addEventListener('change', ()=>{ pageState.maersk=1; renderMaerskSummary(); });
@@ -1835,8 +1849,25 @@ document.getElementById('exportMaerskBtn').addEventListener('click', ()=>{
   const cols = ['date','invoice','driver','jobType','hostName','uid','costCentre','details','qty','unitCost','cost','remarks'];
   const headerLabels = ['Date','Invoice #','Driver','Job Type','Host','UID','Cost Centre','Trip Details','Qty','Unit Cost','Cost','Remarks'];
   const header = headerLabels.map(csvField).join(',');
-  const dataRows = rows.map(j=>cols.map(c=>csvField(c==='date'?fmtDate(j[c]):j[c])).join(','));
-  const totalCost = rows.reduce((s,j)=>s+(Number(j.cost)||0),0);
+  const dataRows = rows.flatMap(j=>{
+    const jobRow = cols.map(c=>csvField(c==='date'?fmtDate(j[c]):j[c])).join(',');
+    const optionRows = optionsByJob(j.id).map(o=>cols.map(c=>{
+      if(c==='date') return csvField(fmtDate(j.date));
+      if(c==='invoice') return csvField(j.invoice);
+      if(c==='driver') return csvField(j.driver);
+      if(c==='jobType') return csvField(fmtOptionLabel(o));
+      if(c==='hostName') return csvField(j.hostName);
+      if(c==='uid') return csvField(j.uid);
+      if(c==='costCentre') return csvField(j.costCentre);
+      if(c==='details') return csvField(o.note||'');
+      if(c==='qty') return csvField(1);
+      if(c==='unitCost') return csvField(Number(o.amount||0).toFixed(2));
+      if(c==='cost') return csvField(Number(o.amount||0).toFixed(2));
+      return '';
+    }).join(','));
+    return [jobRow, ...optionRows];
+  });
+  const totalCost = rows.reduce((s,j)=>s+(Number(j.cost)||0)+optionsByJob(j.id).reduce((os,o)=>os+(Number(o.amount)||0),0),0);
   const totalRow = cols.map(c=>c==='cost' ? csvField(totalCost.toFixed(2)) : c==='hostName' ? csvField('TOTAL') : '').join(',');
   const csv = [header, ...dataRows, totalRow].join('\n');
   const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
