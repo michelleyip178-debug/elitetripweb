@@ -154,7 +154,7 @@ async function init(){
       COMPANY_LETTERHEAD.phone,
       COMPANY_LETTERHEAD.email,
       COMPANY_LETTERHEAD.website,
-      COMPANY_LETTERHEAD.regNo ? `Company Registration No. ${COMPANY_LETTERHEAD.regNo}` : '',
+      COMPANY_LETTERHEAD.regNo ? `Registration No. ${COMPANY_LETTERHEAD.regNo}` : '',
     ].filter(Boolean);
 
     return `
