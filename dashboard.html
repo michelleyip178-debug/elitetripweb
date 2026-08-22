@@ -37,6 +37,7 @@
   <button data-view="dashboard" class="active">Dashboard</button>
   <button data-view="jobs">Job Log</button>
   <button data-view="invoices">Invoices</button>
+  <button data-view="invoicetracking">Invoice Tracking</button>
   <button data-view="drivers">Drivers</button>
   <button data-view="clients">Clients</button>
   <button data-view="jobtypes">Job Types &amp; Rates</button>
@@ -142,6 +143,33 @@
       </table>
     </div>
     <div class="pagination" id="invoicesPagination"></div>
+  </div>
+
+  <!-- INVOICE TRACKING -->
+  <div class="view" id="view-invoicetracking">
+    <div class="cards" id="invoiceTrackingCards"></div>
+    <div class="toolbar">
+      <select id="fTrackYear"><option value="">All Years</option></select>
+      <select id="fTrackMonth"><option value="">All Months</option></select>
+      <select id="fTrackStatus"><option value="">All Statuses</option><option value="unpaid">Unpaid</option><option value="pending">Pending</option><option value="paid">Paid</option></select>
+      <input type="search" id="fTrackSearch" placeholder="Search invoice #, host, company…">
+      <div class="spacer"></div>
+      <span class="small muted" id="trackCount"></span>
+    </div>
+    <div class="panel" style="overflow:auto;max-height:75vh;">
+      <table id="invoiceTrackingTable">
+        <thead><tr>
+          <th class="sortable" data-key="invoice">Invoice #<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="date">Date<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="hostName">Host / Company<span class="sortArrow"></span></th>
+          <th class="num sortable" data-key="amount">Amount<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="status">Status<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="dueDate">Due Date<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="paymentDate">Payment Date<span class="sortArrow"></span></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- DRIVERS -->

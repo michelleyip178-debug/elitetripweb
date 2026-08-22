@@ -19,6 +19,7 @@ const TBL = {
   rates: 'rates' + TABLE_SUFFIX,
   jobs: 'jobs' + TABLE_SUFFIX,
   job_options: 'job_options' + TABLE_SUFFIX,
+  invoice_meta: 'invoice_meta' + TABLE_SUFFIX,
 };
 
 // Same job types across both workspaces (the job_types DB table is unused/empty —

@@ -70,18 +70,22 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 const MONTH_FULL = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
 
 async function loadData(){
-  const [drivers, clients, jobTypes, rates, jobs, jobOptions] = await Promise.all([
+  const [drivers, clients, jobTypes, rates, jobs, jobOptions, invoiceMeta] = await Promise.all([
     sb.from(TBL.drivers).select('*'),
     sb.from(TBL.clients).select('*'),
     sb.from(TBL.job_types).select('*'),
     sb.from(TBL.rates).select('*'),
     sb.from(TBL.jobs).select('*'),
     sb.from(TBL.job_options).select('*'),
+    sb.from(TBL.invoice_meta).select('*'),
   ]);
   if(drivers.error || clients.error || jobTypes.error || rates.error || jobs.error || jobOptions.error){
     console.error('Supabase load failed, falling back to seed data');
     return JSON.parse(JSON.stringify(window.SEED));
   }
+  // invoice_meta is a newer table — tolerate it not existing yet rather than
+  // breaking the whole app load.
+  if(invoiceMeta.error) console.error('invoice_meta load failed:', invoiceMeta.error.message);
   return {
     drivers: drivers.data,
     clients: clients.data,
@@ -89,10 +93,11 @@ async function loadData(){
     rates: rates.data,
     jobs: jobs.data,
     jobOptions: jobOptions.data,
+    invoiceMeta: invoiceMeta.error ? [] : invoiceMeta.data,
   };
 }
 
-let DATA = { drivers:[], clients:[], jobTypes:[], rates:[], jobs:[], jobOptions:[] };
+let DATA = { drivers:[], clients:[], jobTypes:[], rates:[], jobs:[], jobOptions:[], invoiceMeta:[] };
 function optionsByJob(jobId){
   return (DATA.jobOptions||[]).filter(o=>o.job_id===jobId);
 }
@@ -775,6 +780,123 @@ document.getElementById('generateInvoiceBtn').addEventListener('click', ()=>{
   const params = new URLSearchParams({ ws: WORKSPACE, inv: [...selectedInvoices].join(',') });
   window.open(`invoice.html?${params}`, '_blank');
 });
+
+// ---------- Invoice Tracking (due date / payment date, one row per invoice #) ----------
+sortState.invoiceTracking = null;
+let trackFiltersDefaulted = false;
+function groupInvoices(){
+  const groups = {};
+  DATA.jobs.forEach(j=>{
+    if(!j.invoice) return;
+    if(!groups[j.invoice]){
+      groups[j.invoice] = { invoice: j.invoice, date: j.date, hostName: j.hostName, company: j.company, amount: 0, statuses: [] };
+    }
+    const g = groups[j.invoice];
+    if(j.date && (!g.date || j.date < g.date)) g.date = j.date;
+    g.amount += (Number(j.qty)||0)*(Number(j.unitCost)||0) + optionsByJob(j.id).reduce((s,o)=>s+(Number(o.amount)||0),0);
+    g.statuses.push((j.paymentStatus||'UNPAID').toUpperCase());
+  });
+  return Object.values(groups).map(g=>{
+    const status = g.statuses.some(s=>statusClass(s)==='unpaid') ? 'UNPAID'
+      : g.statuses.some(s=>statusClass(s)==='pending') ? 'PENDING' : 'PAID';
+    const meta = (DATA.invoiceMeta||[]).find(m=>m.invoice===g.invoice);
+    return { ...g, status, dueDate: meta?.dueDate || '', paymentDate: meta?.paymentDate || '' };
+  });
+}
+function populateTrackFilterOptions(rows){
+  const fYear = document.getElementById('fTrackYear');
+  const currentYear = String(new Date().getFullYear());
+  const years = [...new Set([...rows.map(r=>r.date).filter(Boolean).map(d=>d.slice(0,4)), currentYear])].sort();
+  if(fYear.options.length<=1){
+    years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
+  }
+  const fMonth = document.getElementById('fTrackMonth');
+  if(fMonth.options.length<=1){
+    MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;fMonth.appendChild(o);});
+  }
+  if(!trackFiltersDefaulted){
+    fYear.value = currentYear;
+    fMonth.value = String(new Date().getMonth()+1).padStart(2,'0');
+    trackFiltersDefaulted = true;
+  }
+}
+const INVOICE_TRACKING_SORT_ACCESSORS = {
+  invoice: r=>r.invoice||'',
+  date: r=>r.date||'',
+  hostName: r=>r.hostName||'',
+  amount: r=>r.amount||0,
+  status: r=>r.status||'',
+  dueDate: r=>r.dueDate||'',
+  paymentDate: r=>r.paymentDate||'',
+};
+function renderInvoiceTracking(){
+  let rows = groupInvoices();
+  populateTrackFilterOptions(rows);
+  const year = document.getElementById('fTrackYear').value;
+  const month = document.getElementById('fTrackMonth').value;
+  const status = document.getElementById('fTrackStatus').value;
+  const search = document.getElementById('fTrackSearch').value.toLowerCase();
+  if(year) rows = rows.filter(r=>(r.date||'').slice(0,4)===year);
+  if(month) rows = rows.filter(r=>(r.date||'').slice(5,7)===month);
+  if(status) rows = rows.filter(r=>statusClass(r.status)===status);
+  if(search) rows = rows.filter(r=>[r.invoice,r.hostName,r.company].some(v=>(v||'').toLowerCase().includes(search)));
+
+  const today = new Date().toISOString().slice(0,10);
+  const overdueCount = rows.filter(r=>r.dueDate && r.dueDate < today && statusClass(r.status)!=='paid').length;
+  const totalAmount = rows.reduce((s,r)=>s+r.amount,0);
+  document.getElementById('invoiceTrackingCards').innerHTML = `
+    <div class="card"><div class="label">Total Invoices</div><div class="value">${rows.length}</div></div>
+    <div class="card"><div class="label">Total Amount</div><div class="value">${fmtMoney(totalAmount)}</div></div>
+    <div class="card"><div class="label">Overdue</div><div class="value">${overdueCount}</div></div>
+  `;
+
+  if(sortState.invoiceTracking){
+    const acc = INVOICE_TRACKING_SORT_ACCESSORS[sortState.invoiceTracking.key];
+    const dir = sortState.invoiceTracking.dir === 'asc' ? 1 : -1;
+    rows.sort((a,b)=> dir * compareValues(acc(a), acc(b)));
+  } else {
+    rows.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  }
+  updateSortArrows('invoiceTrackingTable', 'invoiceTracking');
+  document.getElementById('trackCount').textContent = `${rows.length} invoice${rows.length===1?'':'s'}`;
+
+  document.querySelector('#invoiceTrackingTable tbody').innerHTML = rows.length ? rows.map(r=>{
+    const overdue = r.dueDate && r.dueDate < today && statusClass(r.status)!=='paid';
+    return `
+    <tr>
+      <td>${r.invoice}</td>
+      <td>${fmtDate(r.date)}</td>
+      <td class="host-cell">${r.hostName||''}${r.company?`<div class="small muted">${r.company}</div>`:''}</td>
+      <td class="num">${fmtMoney(r.amount)}</td>
+      <td><span class="pill ${statusClass(r.status)}">${r.status}</span></td>
+      <td><input type="date" class="trackDueDate" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.dueDate||''}" style="${overdue?'border-color:var(--red);color:var(--red);':''}"></td>
+      <td><input type="date" class="trackPaymentDate" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.paymentDate||''}"></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="7" class="empty">No invoices match these filters</td></tr>`;
+}
+async function upsertInvoiceMeta(invoice, patch){
+  const existing = (DATA.invoiceMeta||[]).find(m=>m.invoice===invoice);
+  if(existing){
+    const {error} = await sb.from(TBL.invoice_meta).update(patch).eq('id', existing.id);
+    if(error){ alert('Save failed: '+error.message); return; }
+    Object.assign(existing, patch);
+  } else {
+    const {data, error} = await sb.from(TBL.invoice_meta).insert({invoice, ...patch}).select();
+    if(error){ alert('Save failed: '+error.message); return; }
+    DATA.invoiceMeta = DATA.invoiceMeta || [];
+    DATA.invoiceMeta.push(data[0]);
+  }
+}
+document.querySelector('#invoiceTrackingTable tbody').addEventListener('change', (e)=>{
+  if(e.target.matches('.trackDueDate')){
+    upsertInvoiceMeta(e.target.dataset.invoice, {dueDate: e.target.value || null}).then(()=>renderInvoiceTracking());
+  } else if(e.target.matches('.trackPaymentDate')){
+    upsertInvoiceMeta(e.target.dataset.invoice, {paymentDate: e.target.value || null}).then(()=>renderInvoiceTracking());
+  }
+});
+wireSortableHeaders('invoiceTrackingTable', 'invoiceTracking', ()=>renderInvoiceTracking());
+['fTrackYear','fTrackMonth','fTrackStatus'].forEach(id=>document.getElementById(id).addEventListener('change', renderInvoiceTracking));
+document.getElementById('fTrackSearch').addEventListener('input', renderInvoiceTracking);
 
 // ---------- Drivers ----------
 const KEY_DRIVERS = ['ALAN YONG','ELVIN SAI','SEAN SEAH','ALAN TOH'];
@@ -1577,6 +1699,7 @@ function renderAll(){
   renderDashboard();
   renderJobs();
   renderInvoices();
+  renderInvoiceTracking();
   renderDrivers();
   renderClients();
   renderRates();
