@@ -1763,15 +1763,16 @@ function populateMaerskFilterOptions(){
   const fYear = document.getElementById('fMaerskYear');
   const currentYear = String(new Date().getFullYear());
   const years = [...new Set([...maerskJobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)), currentYear])].sort();
-  if(fYear.options.length<=1){
+  if(fYear.options.length===0){
     years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
   }
   const fMonth = document.getElementById('fMaerskMonth');
-  if(fMonth.options.length<=1){
+  if(fMonth.options.length===0){
     MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;fMonth.appendChild(o);});
   }
-  // Default the view to the current real-world month, once per page load —
-  // not the latest month with data, so it doesn't get stuck on an old month.
+  // Always a specific month — no "All" option, so this summary never shows
+  // more than one month at a time. Defaults to the current real-world month
+  // once per page load, not the latest month with data.
   if(!maerskFiltersDefaulted){
     fYear.value = currentYear;
     fMonth.value = String(new Date().getMonth()+1).padStart(2,'0');
