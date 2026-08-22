@@ -831,7 +831,8 @@ function renderInvoiceTracking(){
   if(search) rows = rows.filter(r=>[r.invoice,r.hostName,r.company].some(v=>(v||'').toLowerCase().includes(search)));
 
   const today = new Date().toISOString().slice(0,10);
-  const overdueCount = rows.filter(r=>r.dueDate && r.dueDate < today && statusClass(r.status)!=='paid').length;
+  rows.forEach(r=>{ r.overdue = !!(r.dueDate && r.dueDate < today && statusClass(r.status)!=='paid'); });
+  const overdueCount = rows.filter(r=>r.overdue).length;
   const totalAmount = rows.reduce((s,r)=>s+r.amount,0);
   document.getElementById('invoiceTrackingCards').innerHTML = `
     <div class="card"><div class="label">Total Invoices</div><div class="value">${rows.length}</div></div>
@@ -844,13 +845,14 @@ function renderInvoiceTracking(){
     const dir = sortState.invoiceTracking.dir === 'asc' ? 1 : -1;
     rows.sort((a,b)=> dir * compareValues(acc(a), acc(b)));
   } else {
-    rows.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+    const statusRank = r => r.overdue ? 0 : statusClass(r.status)==='unpaid' ? 1 : statusClass(r.status)==='pending' ? 2 : 3;
+    rows.sort((a,b)=> (statusRank(a)-statusRank(b)) || (b.date||'').localeCompare(a.date||''));
   }
   updateSortArrows('invoiceTrackingTable', 'invoiceTracking');
   document.getElementById('trackCount').textContent = `${rows.length} invoice${rows.length===1?'':'s'}`;
 
   document.querySelector('#invoiceTrackingTable tbody').innerHTML = rows.length ? rows.map(r=>{
-    const overdue = r.dueDate && r.dueDate < today && statusClass(r.status)!=='paid';
+    const overdue = r.overdue;
     const displayStatus = overdue ? 'OVERDUE' : r.status;
     const checked = selectedTrackInvoices.has(r.invoice) ? 'checked' : '';
     return `
