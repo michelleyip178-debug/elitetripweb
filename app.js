@@ -773,9 +773,18 @@ function csvField(v){
   if(/[",\n]/.test(v)) return '"'+v.replace(/"/g,'""')+'"';
   return v;
 }
-document.getElementById('generateInvoiceBtn').addEventListener('click', ()=>{
+document.getElementById('generateInvoiceBtn').addEventListener('click', async ()=>{
   if(selectedInvoices.size===0){ alert('Select at least one invoice to generate.'); return; }
-  const params = new URLSearchParams({ ws: WORKSPACE, inv: [...selectedInvoices].join(',') });
+  const invNums = [...selectedInvoices];
+  // Record when each invoice was first generated as its Date Sent, unless
+  // it's already been set (so reprinting doesn't overwrite the original date).
+  const today = new Date().toISOString().slice(0,10);
+  for(const inv of invNums){
+    const existing = (DATA.invoiceMeta||[]).find(m=>m.invoice===inv);
+    if(!existing?.dateSent) await upsertInvoiceMeta(inv, {dateSent: today});
+  }
+  renderAll();
+  const params = new URLSearchParams({ ws: WORKSPACE, inv: invNums.join(',') });
   window.open(`invoice.html?${params}`, '_blank');
 });
 
