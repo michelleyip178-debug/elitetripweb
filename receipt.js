@@ -156,7 +156,7 @@ async function init(){
     return `
     <div class="invoice-doc">
       <div class="invoice-head">
-        <div>
+        <div class="invoice-letterhead">
           <div class="name">${escHtml(COMPANY_LETTERHEAD.name)}</div>
           <div class="invoice-from">${escHtml(letterheadLines.join('\n'))}</div>
         </div>
