@@ -268,8 +268,26 @@ document.querySelectorAll('nav button').forEach(btn=>{
     btn.classList.add('active');
     document.getElementById('view-'+btn.dataset.view).classList.add('active');
     renderAll();
+    const active = document.querySelector('nav button.active');
+    if(active) history.replaceState(null, '', `?ws=${WORKSPACE}&view=${active.dataset.view}`);
   });
 });
+
+// ---------- Workspace toggle ----------
+document.querySelectorAll('#wsToggle button').forEach(btn=>{
+  if(btn.dataset.ws === WORKSPACE) btn.classList.add('active');
+  btn.addEventListener('click', ()=>{
+    if(btn.dataset.ws === WORKSPACE) return;
+    const currentView = document.querySelector('nav button.active')?.dataset.view || 'dashboard';
+    location.href = `dashboard.html?ws=${btn.dataset.ws}&view=${currentView}`;
+  });
+});
+(function restoreViewFromUrl(){
+  const view = new URLSearchParams(location.search).get('view');
+  if(!view) return;
+  const btn = [...document.querySelectorAll('nav button')].find(b=>b.dataset.view===view);
+  if(btn) btn.click();
+})();
 
 // ---------- Dashboard ----------
 let dashFiltersDefaulted = false;
