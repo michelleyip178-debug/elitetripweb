@@ -834,11 +834,11 @@ function renderInvoiceTracking(){
   populateTrackFilterOptions(rows);
   const year = document.getElementById('fTrackYear').value;
   const month = document.getElementById('fTrackMonth').value;
-  const status = document.getElementById('fTrackStatus').value;
+  const showPaid = document.getElementById('fTrackShowPaid').checked;
   const search = document.getElementById('fTrackSearch').value.toLowerCase();
   if(year) rows = rows.filter(r=>(r.date||'').slice(0,4)===year);
   if(month) rows = rows.filter(r=>(r.date||'').slice(5,7)===month);
-  if(status) rows = rows.filter(r=>statusClass(r.status)===status);
+  if(!showPaid) rows = rows.filter(r=>statusClass(r.status)!=='paid');
   if(search) rows = rows.filter(r=>[r.invoice,r.hostName,r.company].some(v=>(v||'').toLowerCase().includes(search)));
 
   const today = new Date().toISOString().slice(0,10);
@@ -895,7 +895,7 @@ document.querySelector('#invoiceTrackingTable tbody').addEventListener('change',
   }
 });
 wireSortableHeaders('invoiceTrackingTable', 'invoiceTracking', ()=>renderInvoiceTracking());
-['fTrackYear','fTrackMonth','fTrackStatus'].forEach(id=>document.getElementById(id).addEventListener('change', renderInvoiceTracking));
+['fTrackYear','fTrackMonth','fTrackShowPaid'].forEach(id=>document.getElementById(id).addEventListener('change', renderInvoiceTracking));
 document.getElementById('fTrackSearch').addEventListener('input', renderInvoiceTracking);
 
 // ---------- Drivers ----------
