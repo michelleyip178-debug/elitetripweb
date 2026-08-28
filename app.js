@@ -1403,7 +1403,6 @@ function fmtOptionLabel(o){
 // MISCELLANEOUS and ADDITIONAL STOP (any variant) both take a free-text
 // description, since neither is specific enough on its own.
 function optionTypeNeedsNote(v){
-  if(WORKSPACE === 'nonmaersk' && v === 'MIDNIGHT SURCHARGE (LOCAL)') return true;
   return v === 'MISCELLANEOUS' || v === '杂项' || /^ADDITIONAL STOP/i.test(v||'');
 }
 function updateOptionNoteVisibility(row){
@@ -1430,15 +1429,7 @@ function addOptionRow(optionType, amount, note){
   row.querySelector('.optionType').value = optionType || '';
   row.querySelector('.removeRowBtn').addEventListener('click', ()=>{ row.remove(); recalc(); });
   row.querySelector('.optionAmount').addEventListener('input', recalc);
-  row.querySelector('.optionType').addEventListener('change', ()=>{
-    applyOptionRate(row);
-    updateOptionNoteVisibility(row);
-    const optType = row.querySelector('.optionType').value;
-    if(WORKSPACE === 'nonmaersk' && optType === 'MIDNIGHT SURCHARGE (LOCAL)'){
-      const noteEl = row.querySelector('.optionNote');
-      if(!noteEl.value.trim()) noteEl.value = '0000 - 0600';
-    }
-  });
+  row.querySelector('.optionType').addEventListener('change', ()=>{ applyOptionRate(row); updateOptionNoteVisibility(row); });
   updateOptionNoteVisibility(row);
   list.appendChild(row);
 }
@@ -1567,13 +1558,8 @@ function applyRateToUnitCost(){
 }
 document.getElementById('f_unitCost').addEventListener('input', ()=>{ unitCostEdited = true; });
 document.getElementById('f_jobType').addEventListener('change', ()=>{
-  const jt = document.getElementById('f_jobType').value;
-  refreshVehicleField(jt);
+  refreshVehicleField(document.getElementById('f_jobType').value);
   applyRateToUnitCost();
-  if(WORKSPACE === 'nonmaersk' && jt === 'MIDNIGHT SURCHARGE (LOCAL)'){
-    const detailsEl = document.getElementById('f_details');
-    if(!detailsEl.value.trim()) detailsEl.value = '0000 - 0600';
-  }
 });
 document.getElementById('f_vehicle').addEventListener('change', applyRateToUnitCost);
 
