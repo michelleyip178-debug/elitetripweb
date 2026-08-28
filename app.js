@@ -710,8 +710,12 @@ async function autoAssignInvoiceNumbers(){
   ungrouped.forEach(j=>{
     const [y,m] = j.date.split('-');
     const yyyymm = y+m;
-    const isMaersk = (j.company||'').trim().toUpperCase() === MAERSK_MONTHLY_COMPANY;
-    const key = isMaersk ? `${j.company}|${yyyymm}` : `${j.company}|${j.date}`;
+    const isMonthly = (j.company||'').trim().toUpperCase() === MAERSK_MONTHLY_COMPANY;
+    // ELITE: every other company gets one invoice per job (not grouped by date).
+    // MAERSK: every other company still gets one invoice per date.
+    const key = isMonthly ? `${j.company}|${yyyymm}`
+      : WORKSPACE === 'nonmaersk' ? `${j.company}|${j.date}|${j.id}`
+      : `${j.company}|${j.date}`;
     groups[key] = groups[key] || {jobs:[], yyyymm};
     groups[key].jobs.push(j);
   });
