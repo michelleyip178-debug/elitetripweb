@@ -19,6 +19,7 @@ const TBL = {
   rates: 'rates' + TABLE_SUFFIX,
   jobs: 'jobs' + TABLE_SUFFIX,
   job_options: 'job_options' + TABLE_SUFFIX,
+  invoice_meta: 'invoice_meta' + TABLE_SUFFIX,
 };
 
 // Same job types across both workspaces (the job_types DB table is unused/empty —
@@ -64,7 +65,7 @@ const RATE_MAP = RATE_MAP_BY_WORKSPACE[WORKSPACE];
 // original "MAERSK LOG SG MINV..." PDF invoices.
 const COMPANY_LETTERHEAD = {
   name: 'Elite Skyline Limousine',
-  addressLines: ['22 Sin Ming Lane #06-76 Midview City', 'Singapore 573969'],
+  addressLines: ['22 Sin Ming Lane, #06-76 Midview City', 'Singapore 573969'],
   phone: '+6581555858',
   email: 'eliteskylinelimo@gmail.com',
   website: 'https://eliteskylinelimo.sg',

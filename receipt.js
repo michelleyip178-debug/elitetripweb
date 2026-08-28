@@ -1,6 +1,7 @@
-// Standalone invoice document page, opened from the Invoices tab in dashboard.html
-// (see the generateInvoiceBtn handler in app.js) as invoice.html?ws=...&inv=INV1,INV2.
-// WORKSPACE, TBL, and COMPANY_LETTERHEAD come from workspace-config.js, loaded before this file.
+// Standalone sales receipt document page, opened from the Invoices tab in
+// dashboard.html (see the generateReceiptBtn handler in app.js) as
+// receipt.html?ws=...&rcpt=ESR2026080001,... WORKSPACE, TBL, and
+// COMPANY_LETTERHEAD come from workspace-config.js, loaded before this file.
 
 const loginOverlay = document.getElementById('loginOverlay');
 const loginBtn = document.getElementById('loginBtn');
@@ -32,16 +33,10 @@ sb.auth.getSession().then(({data:{session}})=>{
 
 // ---------- Formatting helpers (ported from app.js — pages here are self-contained) ----------
 function fmtMoney(n){ n = Number(n)||0; return 'S$' + n.toLocaleString('en-SG', {minimumFractionDigits:2, maximumFractionDigits:2}); }
-function pad2(n){ return String(n).padStart(2,'0'); }
 function toDMY(dateStr){
   if(!dateStr) return '';
   const [y,m,d] = dateStr.split('-');
   return `${d}/${m}/${y}`;
-}
-function addDaysDMY(dateStr, days){
-  const d = new Date(dateStr+'T00:00:00');
-  d.setDate(d.getDate()+days);
-  return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`;
 }
 function extractRoute(text){
   if(!text) return '';
@@ -69,7 +64,7 @@ function buildItemDescription(job, drivers){
   if(job.driver){
     const d = (drivers||[]).find(x=>x.name===job.driver);
     const plate = job.vehicle && !d ? job.vehicle : (d?.plate || '');
-    lines.push(`DRIVER: ${job.driver}${plate?` (${plate})`:''}`);
+    lines.push(`DRIVER NAME: ${job.driver}${plate?` (${plate})`:''}`);
   }
   if(job.startTime && isHourlyJobType(job.jobType)){
     const s = job.startTime.replace(':','');
@@ -82,26 +77,26 @@ function buildItemDescription(job, drivers){
 // ---------- Load + render ----------
 async function init(){
   loginOverlay.classList.add('hidden');
-  const invoiceNumbers = [...new Set((new URLSearchParams(location.search).get('inv')||'').split(',').map(s=>s.trim()).filter(Boolean))];
-  if(!invoiceNumbers.length){
-    preview.innerHTML = '<div class="invoice-empty">No invoice numbers given. Go back to the Invoices tab and select at least one invoice.</div>';
+  const receiptNumbers = [...new Set((new URLSearchParams(location.search).get('rcpt')||'').split(',').map(s=>s.trim()).filter(Boolean))];
+  if(!receiptNumbers.length){
+    preview.innerHTML = '<div class="invoice-empty">No sales receipt numbers given. Go back to the Invoices tab and select at least one paid invoice.</div>';
     return;
   }
 
   const [jobsRes, clientsRes, driversRes] = await Promise.all([
-    sb.from(TBL.jobs).select('*').in('invoice', invoiceNumbers),
+    sb.from(TBL.jobs).select('*').in('salesReceipt', receiptNumbers),
     sb.from(TBL.clients).select('*'),
     sb.from(TBL.drivers).select('*'),
   ]);
   if(jobsRes.error || clientsRes.error || driversRes.error){
-    preview.innerHTML = `<div class="invoice-empty">Failed to load invoice data: ${escHtml((jobsRes.error||clientsRes.error||driversRes.error).message)}</div>`;
+    preview.innerHTML = `<div class="invoice-empty">Failed to load sales receipt data: ${escHtml((jobsRes.error||clientsRes.error||driversRes.error).message)}</div>`;
     return;
   }
   const jobs = jobsRes.data;
   const clients = clientsRes.data;
   const drivers = driversRes.data;
   if(!jobs.length){
-    preview.innerHTML = '<div class="invoice-empty">No job records found for the selected invoice number(s).</div>';
+    preview.innerHTML = '<div class="invoice-empty">No job records found for the selected sales receipt number(s).</div>';
     return;
   }
 
@@ -117,18 +112,18 @@ async function init(){
     return matches.find(c=>c.billingAddress) || matches[0] || null;
   }
 
-  preview.innerHTML = invoiceNumbers.map(inv=>{
-    const invJobs = jobs.filter(j=>j.invoice===inv).sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
-    if(!invJobs.length) return `<div class="invoice-doc"><div class="invoice-empty">No records found for invoice ${escHtml(inv)}.</div></div>`;
+  preview.innerHTML = receiptNumbers.map(rcpt=>{
+    const rcptJobs = jobs.filter(j=>j.salesReceipt===rcpt).sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
+    if(!rcptJobs.length) return `<div class="invoice-doc"><div class="invoice-empty">No records found for sales receipt ${escHtml(rcpt)}.</div></div>`;
 
-    const company = invJobs[0].company || '';
+    const company = rcptJobs[0].company || '';
+    const hostName = rcptJobs[0].hostName || '';
     const client = findBillingClient(company);
-    const dates = invJobs.map(j=>j.date).filter(Boolean);
-    const invDate = dates.length ? dates.reduce((a,b)=>a<b?a:b) : '';
-    const dueDateDMY = invDate ? addDaysDMY(invDate, 30) : '';
+    const dates = rcptJobs.map(j=>j.date).filter(Boolean);
+    const rcptDate = dates.length ? dates.reduce((a,b)=>a>b?a:b) : '';
 
     let subtotal = 0;
-    const rows = invJobs.map(j=>{
+    const rows = rcptJobs.map(j=>{
       const cost = (Number(j.qty)||0) * (Number(j.unitCost)||0);
       subtotal += cost;
       const addonRows = optionsByJob(j.id).map(o=>{
@@ -145,7 +140,8 @@ async function init(){
       </tr>${addonRows}`;
     }).join('');
 
-    const billToLines = [company];
+    const billToLines = [company ? company : hostName];
+    if(company && hostName) billToLines.push(hostName);
     if(client?.billingAddress) billToLines.push(client.billingAddress);
     if(client?.uen) billToLines.push(`UEN: ${client.uen}`);
 
@@ -165,7 +161,7 @@ async function init(){
         </div>
         <img class="invoice-logo" src="${COMPANY_LETTERHEAD.logoUrl||''}" alt="" onerror="this.style.display='none'">
       </div>
-      <h1 class="invoice-title">INVOICE</h1>
+      <h1 class="invoice-title">SALES RECEIPT</h1>
       <div class="invoice-billmeta">
         <div class="invoice-billto">
           <div class="label">Bill To</div>
@@ -173,9 +169,8 @@ async function init(){
         </div>
         <div class="invoice-meta">
           <table>
-            <tr><td class="mlabel">INVOICE</td><td class="mval">${escHtml(inv)}</td></tr>
-            <tr><td class="mlabel">DATE</td><td class="mval"><input type="text" class="invoice-date-input" value="${escHtml(invDate ? toDMY(invDate) : '')}"></td></tr>
-            <tr><td class="mlabel">DUE DATE</td><td class="mval">${escHtml(dueDateDMY)}</td></tr>
+            <tr><td class="mlabel">SALES</td><td class="mval">${escHtml(rcpt)}</td></tr>
+            <tr><td class="mlabel">DATE</td><td class="mval">${escHtml(rcptDate ? toDMY(rcptDate) : '')}</td></tr>
           </table>
         </div>
       </div>
@@ -184,14 +179,13 @@ async function init(){
         <tbody>${rows}</tbody>
       </table>
       <div class="invoice-footer">
-        <div class="thanks">This is a computer generated invoice. No signature is required.<br>Thank you for your business.</div>
-        <div class="invoice-balance"><span class="label">Balance Due</span>${fmtMoney(subtotal)}</div>
+        <div class="thanks">This is a computer-generated sales receipt. No signature is needed.</div>
+        <div class="invoice-balance"><span class="label">Total</span>${fmtMoney(subtotal)}</div>
       </div>
-      ${(COMPANY_LETTERHEAD.paymentMethods||[]).length ? `
-      <div class="invoice-payment">
-        <div class="label">Payment Methods:</div>
-        <div>${COMPANY_LETTERHEAD.paymentMethods.map((m,i)=>`${i+1}. ${escHtml(m)}`).join('<br>')}</div>
-      </div>` : ''}
+      <div class="invoice-footer" style="border-top:none;margin-top:4px;padding-top:0;">
+        <div></div>
+        <div class="invoice-balance"><span class="label">Balance Due</span>${fmtMoney(0)}</div>
+      </div>
     </div>`;
   }).join('');
 }

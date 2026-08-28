@@ -26,6 +26,7 @@
   .panel{overflow-x:auto;}
   th,td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap;}
   td .small.muted{white-space:nowrap;}
+  #invoiceTrackingTable td:nth-child(2){white-space:normal;max-width:180px;}
   td.details-cell{white-space:normal;min-width:280px;}
   td.jobtype-cell{white-space:normal;min-width:160px;}
   td.driver-cell,td.host-cell{white-space:normal;max-width:120px;}
@@ -48,7 +49,8 @@
   .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
   .pill.paid{background:#e4f7ec;color:var(--green);}
   .pill.pending{background:#fff3e0;color:var(--amber);}
-  .pill.unpaid{background:#fdecea;color:var(--red);}
+  .pill.unpaid{background:#e8f0fe;color:var(--accent);}
+  .pill.overdue{background:#fdecea;color:var(--red);}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
   select,input,textarea{font-family:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);}
   .dateField{position:relative;}
@@ -69,6 +71,7 @@
   button.btn.danger{background:#fdecea;color:var(--red);}
   button.btn:hover{filter:brightness(0.96);}
   .spacer{flex:1;}
+  .toolbar-right{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end;flex-basis:100%;}
   .modal-bg{display:none;position:fixed;inset:0;background:rgba(20,24,34,.45);z-index:50;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 16px;}
   .modal-bg.active{display:flex;}
   .modal{background:#fff;border-radius:12px;width:100%;max-width:640px;padding:22px;}
@@ -102,6 +105,10 @@
   .login-box .login-toggle{margin-top:14px;font-size:12.5px;color:var(--muted);}
   .login-box .login-toggle a{color:var(--accent);cursor:pointer;text-decoration:none;}
   .login-error{color:var(--red);font-size:12px;margin-bottom:10px;min-height:16px;}
+  .ws-toggle{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;}
+  .ws-toggle button{background:#fff;border:none;padding:7px 14px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;}
+  .ws-toggle button+button{border-left:1px solid var(--line);}
+  .ws-toggle button.active{background:var(--accent);color:var(--accent-ink);}
   #logoutBtn{background:none;border:1px solid var(--line);padding:6px 12px;border-radius:7px;font-size:12px;color:var(--muted);cursor:pointer;}
   #logoutBtn:hover{background:#fdecea;color:var(--red);border-color:var(--red);}
 

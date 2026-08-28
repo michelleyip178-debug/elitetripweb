@@ -27,6 +27,10 @@
     <div class="sub" id="headerSub">Loading…</div>
   </div>
   <div style="display:flex;gap:8px;align-items:center;">
+    <div class="ws-toggle" id="wsToggle">
+      <button data-ws="maersk">MAERSK</button>
+      <button data-ws="nonmaersk">ELITE</button>
+    </div>
     <button class="btn secondary" id="exportBtn">Export CSV</button>
     <button class="btn" id="addJobBtn">+ New Job</button>
     <button id="logoutBtn">Sign Out</button>
@@ -37,6 +41,7 @@
   <button data-view="dashboard" class="active">Dashboard</button>
   <button data-view="jobs">Job Log</button>
   <button data-view="invoices">Invoices</button>
+  <button data-view="invoicetracking">Invoice Tracking</button>
   <button data-view="drivers">Drivers</button>
   <button data-view="clients">Clients</button>
   <button data-view="jobtypes">Job Types &amp; Rates</button>
@@ -114,12 +119,13 @@
       <select id="fInvHost"><option value="">All Hosts</option></select>
       <select id="fInvCompany"><option value="">All Companies</option></select>
       <input type="search" id="fInvSearch" placeholder="Search invoice #, host, company…">
-      <div class="spacer"></div>
-      <span class="small muted" id="invCount"></span>
-      <button class="btn secondary" id="invoicesClearSortBtn">Clear Sort</button>
-      <button class="btn secondary" id="autoAssignBtn">Auto-Assign Invoice #s</button>
-      <button class="btn secondary" id="markPaidBtn">Mark as Paid</button>
-      <button class="btn" id="generateInvoiceBtn">Generate Invoice</button>
+      <div class="toolbar-right">
+        <span class="small muted" id="invCount"></span>
+        <button class="btn secondary" id="invoicesClearSortBtn">Clear Sort</button>
+        <button class="btn secondary" id="autoAssignBtn">Auto-Assign Invoice #s</button>
+        <button class="btn" id="generateInvoiceBtn">Generate Invoice</button>
+        <button class="btn secondary" id="generateReceiptBtn">Generate Sales Receipt</button>
+      </div>
     </div>
     <div class="panel" style="overflow:auto;max-height:75vh;">
       <table id="invoicesTable">
@@ -142,6 +148,36 @@
       </table>
     </div>
     <div class="pagination" id="invoicesPagination"></div>
+  </div>
+
+  <!-- INVOICE TRACKING -->
+  <div class="view" id="view-invoicetracking">
+    <div class="cards" id="invoiceTrackingCards"></div>
+    <div class="toolbar">
+      <select id="fTrackYear"><option value="">All Years</option></select>
+      <select id="fTrackMonth"><option value="">All Months</option></select>
+      <label class="small muted" style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><input type="checkbox" id="fTrackShowPaid"> Show Paid Invoices</label>
+      <input type="search" id="fTrackSearch" placeholder="Search invoice #, host, company…">
+      <div class="spacer"></div>
+      <span class="small muted" id="trackCount"></span>
+      <button class="btn secondary" id="trackMarkPaidBtn">Mark as Paid</button>
+    </div>
+    <div class="panel" style="overflow:auto;max-height:75vh;">
+      <table id="invoiceTrackingTable">
+        <thead><tr>
+          <th><input type="checkbox" id="trackSelectAll"></th>
+          <th class="sortable" data-key="invoice">Invoice #<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="hostName">Company<span class="sortArrow"></span></th>
+          <th class="num sortable" data-key="amount">Amount<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="status">Status<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="dateSent">Date Sent<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="dueDate">Due Date<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="paymentDate">Payment Date<span class="sortArrow"></span></th>
+          <th>Documents</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- DRIVERS -->
@@ -214,8 +250,8 @@
   <!-- MAERSK SUMMARY -->
   <div class="view" id="view-maersk">
     <div class="toolbar">
-      <select id="fMaerskYear"><option value="">All Years</option></select>
-      <select id="fMaerskMonth"><option value="">All Months</option></select>
+      <select id="fMaerskYear"></select>
+      <select id="fMaerskMonth"></select>
       <div class="spacer"></div>
       <span class="small muted" id="maerskCount"></span>
       <button class="btn" id="exportMaerskBtn">Export MAERSK Summary (CSV)</button>
@@ -264,6 +300,7 @@
       <div id="companyFieldWrap"><label>Company</label><input type="text" id="f_company"></div>
       <div id="uidFieldWrap"><label>UID</label><input type="text" id="f_uid"></div>
       <div id="costCentreFieldWrap"><label>Cost Centre</label><input type="text" id="f_costCentre"></div>
+      <div id="sinadmFieldWrap"><label>&nbsp;</label><label style="text-transform:none;font-weight:400;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="f_sinadm" style="width:auto;"> Sent from SINADM</label></div>
       <div><label>PAX</label><input type="text" id="f_pax" placeholder="e.g. 3 PAX"></div>
 
       <div class="full"><label>Itinerary</label><textarea id="f_details" rows="3" placeholder="e.g. PLQ 1 - Fairmont Singapore - PLQ 1"></textarea></div>

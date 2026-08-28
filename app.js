@@ -9,7 +9,7 @@ document.querySelector('.login-box .sub').textContent = `Sign in to access the $
 // and the MAERSK Summary tab (filters by MAERSK SINGAPORE PTE LTD + SG51 cost
 // centre) is irrelevant for ELITE.
 if(WORKSPACE === 'nonmaersk'){
-  ['uidFieldWrap','costCentreFieldWrap','maerskNavBtn'].forEach(id=>{
+  ['uidFieldWrap','costCentreFieldWrap','sinadmFieldWrap','maerskNavBtn'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
@@ -70,18 +70,22 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 const MONTH_FULL = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
 
 async function loadData(){
-  const [drivers, clients, jobTypes, rates, jobs, jobOptions] = await Promise.all([
+  const [drivers, clients, jobTypes, rates, jobs, jobOptions, invoiceMeta] = await Promise.all([
     sb.from(TBL.drivers).select('*'),
     sb.from(TBL.clients).select('*'),
     sb.from(TBL.job_types).select('*'),
     sb.from(TBL.rates).select('*'),
     sb.from(TBL.jobs).select('*'),
     sb.from(TBL.job_options).select('*'),
+    sb.from(TBL.invoice_meta).select('*'),
   ]);
   if(drivers.error || clients.error || jobTypes.error || rates.error || jobs.error || jobOptions.error){
     console.error('Supabase load failed, falling back to seed data');
     return JSON.parse(JSON.stringify(window.SEED));
   }
+  // invoice_meta is a newer table — tolerate it not existing yet rather than
+  // breaking the whole app load.
+  if(invoiceMeta.error) console.error('invoice_meta load failed:', invoiceMeta.error.message);
   return {
     drivers: drivers.data,
     clients: clients.data,
@@ -89,10 +93,11 @@ async function loadData(){
     rates: rates.data,
     jobs: jobs.data,
     jobOptions: jobOptions.data,
+    invoiceMeta: invoiceMeta.error ? [] : invoiceMeta.data,
   };
 }
 
-let DATA = { drivers:[], clients:[], jobTypes:[], rates:[], jobs:[], jobOptions:[] };
+let DATA = { drivers:[], clients:[], jobTypes:[], rates:[], jobs:[], jobOptions:[], invoiceMeta:[] };
 function optionsByJob(jobId){
   return (DATA.jobOptions||[]).filter(o=>o.job_id===jobId);
 }
@@ -263,8 +268,26 @@ document.querySelectorAll('nav button').forEach(btn=>{
     btn.classList.add('active');
     document.getElementById('view-'+btn.dataset.view).classList.add('active');
     renderAll();
+    const active = document.querySelector('nav button.active');
+    if(active) history.replaceState(null, '', `?ws=${WORKSPACE}&view=${active.dataset.view}`);
   });
 });
+
+// ---------- Workspace toggle ----------
+document.querySelectorAll('#wsToggle button').forEach(btn=>{
+  if(btn.dataset.ws === WORKSPACE) btn.classList.add('active');
+  btn.addEventListener('click', ()=>{
+    if(btn.dataset.ws === WORKSPACE) return;
+    const currentView = document.querySelector('nav button.active')?.dataset.view || 'dashboard';
+    location.href = `dashboard.html?ws=${btn.dataset.ws}&view=${currentView}`;
+  });
+});
+(function restoreViewFromUrl(){
+  const view = new URLSearchParams(location.search).get('view');
+  if(!view) return;
+  const btn = [...document.querySelectorAll('nav button')].find(b=>b.dataset.view===view);
+  if(btn) btn.click();
+})();
 
 // ---------- Dashboard ----------
 let dashFiltersDefaulted = false;
@@ -292,11 +315,19 @@ function renderDashboard(){
   const totalCoy = jobs.reduce((s,j)=>s+(Number(j.coyFund)||0),0);
   document.getElementById('headerSub').textContent = `${jobs.length} jobs logged · ${fmtMoney(totalSales)} total sales${year?' in '+year:' YTD'}`;
 
+  const today = new Date().toISOString().slice(0,10);
+  const invoiceOverdue = {};
+  groupInvoices().forEach(g=>{
+    invoiceOverdue[g.invoice] = !!(g.dueDate && g.dueDate < today && statusClass(g.status)!=='paid');
+  });
+  const overdueInvoiceCount = Object.values(invoiceOverdue).filter(Boolean).length;
+
   document.getElementById('dashCards').innerHTML = `
     <div class="card"><div class="label">Total Jobs</div><div class="value">${jobs.length}</div></div>
     <div class="card"><div class="label">Total Sales</div><div class="value">${fmtMoney(totalSales)}</div></div>
     <div class="card"><div class="label">Driver Payout</div><div class="value">${fmtMoney(totalPayout)}</div></div>
     <div class="card"><div class="label">Company Fund</div><div class="value">${fmtMoney(totalCoy)}</div></div>
+    <div class="card"><div class="label">Overdue Invoices</div><div class="value">${overdueInvoiceCount}</div></div>
   `;
 
   const byMonth = {};
@@ -317,7 +348,8 @@ function renderDashboard(){
 
   const byStatus = {};
   jobs.forEach(j=>{
-    const s = (j.paymentStatus || 'UNPAID').toUpperCase();
+    let s = (j.paymentStatus || 'UNPAID').toUpperCase();
+    if(statusClass(s)!=='paid' && j.invoice && invoiceOverdue[j.invoice]) s = 'OVERDUE';
     byStatus[s] = byStatus[s] || {jobs:0,sales:0};
     byStatus[s].jobs++;
     byStatus[s].sales += Number(j.cost)||0;
@@ -325,7 +357,7 @@ function renderDashboard(){
   const ptbody = document.querySelector('#paymentTable tbody');
   const entries = Object.entries(byStatus);
   ptbody.innerHTML = entries.length ? entries.map(([s,r])=>
-    `<tr><td><span class="pill ${statusClass(s)}">${s}</span></td><td class="num">${r.jobs}</td><td class="num">${fmtMoney(r.sales)}</td></tr>`
+    `<tr><td><span class="pill ${s==='OVERDUE' ? 'overdue' : statusClass(s)}">${s}</span></td><td class="num">${r.jobs}</td><td class="num">${fmtMoney(r.sales)}</td></tr>`
   ).join('') : `<tr><td colspan="3" class="empty">No jobs yet</td></tr>`;
 }
 document.getElementById('fDashYear').addEventListener('change', renderDashboard);
@@ -619,7 +651,6 @@ function renderInvoices(_skipFit){
   renderPagination('invoicesPagination', 'invoices', page, totalPages, renderInvoices);
   const checkable = [...document.querySelectorAll('.inv-check')];
   document.getElementById('invSelectAll').checked = checkable.length>0 && checkable.every(c=>c.checked);
-  updateMarkPaidBtnLabel();
 }
 document.getElementById('fInvSearch').addEventListener('input', ()=>{ pageState.invoices=1; renderInvoices(); });
 document.getElementById('fInvDate').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
@@ -628,15 +659,6 @@ document.getElementById('fInvMonth').addEventListener('change', ()=>{ pageState.
 document.getElementById('fInvHost').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
 document.getElementById('fInvCompany').addEventListener('change', ()=>{ pageState.invoices=1; renderInvoices(); });
 
-// "Mark as Paid" toggles to "Mark as Unpaid" once every job under the
-// selected invoice(s) is already PAID — a smart toggle, not two buttons.
-function updateMarkPaidBtnLabel(){
-  const btn = document.getElementById('markPaidBtn');
-  if(!btn) return;
-  const jobs = DATA.jobs.filter(j=>selectedInvoices.has(j.invoice));
-  const allPaid = jobs.length>0 && jobs.every(j=>(j.paymentStatus||'').toUpperCase()==='PAID');
-  btn.textContent = allPaid ? 'Mark as Unpaid' : 'Mark as Paid';
-}
 document.querySelector('#invoicesTable tbody').addEventListener('change', e=>{
   if(e.target.matches('.inv-check')){
     const inv = decodeURIComponent(e.target.dataset.inv);
@@ -644,7 +666,6 @@ document.querySelector('#invoicesTable tbody').addEventListener('change', e=>{
     // Sync other rows sharing the same invoice # on this page.
     document.querySelectorAll(`.inv-check[data-inv="${e.target.dataset.inv}"]`).forEach(c=>c.checked = e.target.checked);
     document.getElementById('invSelectAll').checked = [...document.querySelectorAll('.inv-check')].every(c=>c.checked);
-    updateMarkPaidBtnLabel();
   }
 });
 document.getElementById('invSelectAll').addEventListener('change', e=>{
@@ -653,7 +674,6 @@ document.getElementById('invSelectAll').addEventListener('change', e=>{
     c.checked = e.target.checked;
     if(e.target.checked) selectedInvoices.add(inv); else selectedInvoices.delete(inv);
   });
-  updateMarkPaidBtnLabel();
 });
 
 // ---------- Auto-assign invoice numbers ----------
@@ -754,9 +774,259 @@ function csvField(v){
   if(/[",\n]/.test(v)) return '"'+v.replace(/"/g,'""')+'"';
   return v;
 }
-document.getElementById('markPaidBtn').addEventListener('click', async ()=>{
-  if(selectedInvoices.size===0){ alert('Select at least one invoice.'); return; }
+document.getElementById('generateInvoiceBtn').addEventListener('click', async ()=>{
+  if(selectedInvoices.size===0){ alert('Select at least one invoice to generate.'); return; }
   const invNums = [...selectedInvoices];
+  // Record when each invoice was first generated as its Date Sent, unless
+  // it's already been set (so reprinting doesn't overwrite the original date).
+  const today = new Date().toISOString().slice(0,10);
+  for(const inv of invNums){
+    const existing = (DATA.invoiceMeta||[]).find(m=>m.invoice===inv);
+    if(!existing?.dateSent) await upsertInvoiceMeta(inv, {dateSent: today});
+  }
+  renderAll();
+  const params = new URLSearchParams({ ws: WORKSPACE, inv: invNums.join(',') });
+  window.open(`invoice.html?${params}`, '_blank');
+});
+
+// ---------- Sales receipts ----------
+// Generated on demand, only after payment — a separate numbering series from
+// invoices (resets monthly), persisted on the job(s) so re-printing reuses it.
+const RECEIPT_PREFIX = WORKSPACE === 'nonmaersk' ? 'ESR' : 'MSR';
+function nextReceiptSeqForMonth(yyyymm){
+  let max = 0;
+  const re = new RegExp('^'+RECEIPT_PREFIX+yyyymm+'(\\d{4})');
+  DATA.jobs.forEach(j=>{
+    if(j.salesReceipt){
+      const m = j.salesReceipt.match(re);
+      if(m) max = Math.max(max, parseInt(m[1],10));
+    }
+  });
+  return max+1;
+}
+document.getElementById('generateReceiptBtn').addEventListener('click', async ()=>{
+  if(selectedInvoices.size===0){ alert('Select at least one invoice to generate a sales receipt for.'); return; }
+  const invNums = [...selectedInvoices];
+  const jobs = DATA.jobs.filter(j=>invNums.includes(j.invoice));
+  const unpaid = jobs.filter(j=>(j.paymentStatus||'').toUpperCase()!=='PAID');
+  if(unpaid.length){
+    alert(`${unpaid.length} job(s) under the selected invoice(s) are not marked PAID yet. Sales receipts can only be generated after payment — mark them as paid first.`);
+    return;
+  }
+
+  const seqByMonth = {};
+  const toAssign = [];
+  invNums.forEach(inv=>{
+    const invJobs = jobs.filter(j=>j.invoice===inv);
+    if(invJobs.length && invJobs.every(j=>j.salesReceipt)) return;
+    const dates = invJobs.map(j=>j.date).filter(Boolean);
+    const earliest = dates.length ? dates.reduce((a,b)=>a<b?a:b) : '';
+    if(!earliest) return;
+    const yyyymm = earliest.slice(0,4)+earliest.slice(5,7);
+    if(seqByMonth[yyyymm] == null) seqByMonth[yyyymm] = nextReceiptSeqForMonth(yyyymm);
+    const seq = seqByMonth[yyyymm]++;
+    toAssign.push({ rcptNum: `${RECEIPT_PREFIX}${yyyymm}${String(seq).padStart(4,'0')}`, jobs: invJobs });
+  });
+
+  for(const a of toAssign){
+    const ids = a.jobs.map(j=>j.id);
+    const {error} = await sb.from(TBL.jobs).update({salesReceipt:a.rcptNum}).in('id', ids);
+    if(error){ alert('Failed to assign sales receipt '+a.rcptNum+': '+error.message); return; }
+    a.jobs.forEach(j=>{ j.salesReceipt = a.rcptNum; });
+  }
+  renderAll();
+
+  const rcptNums = [...new Set(jobs.map(j=>j.salesReceipt).filter(Boolean))];
+  if(!rcptNums.length){ alert('Could not assign a sales receipt — selected jobs are missing a date.'); return; }
+  const params = new URLSearchParams({ ws: WORKSPACE, rcpt: rcptNums.join(',') });
+  window.open(`receipt.html?${params}`, '_blank');
+});
+
+// ---------- Invoice Tracking (due date / payment date, one row per invoice #) ----------
+sortState.invoiceTracking = null;
+let trackFiltersDefaulted = false;
+// Adds working days only (skips Sat/Sun) — used for the due date, which counts
+// from when the invoice was actually sent, not from the job date.
+function addWorkingDaysISO(dateStr, days){
+  if(!dateStr) return '';
+  const d = new Date(dateStr+'T00:00:00');
+  let added = 0;
+  while(added < days){
+    d.setDate(d.getDate()+1);
+    const dow = d.getDay();
+    if(dow !== 0 && dow !== 6) added++;
+  }
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function groupInvoices(){
+  const groups = {};
+  DATA.jobs.forEach(j=>{
+    if(!j.invoice) return;
+    if(!groups[j.invoice]){
+      groups[j.invoice] = { invoice: j.invoice, date: j.date, hostName: j.hostName, company: j.company, amount: 0, statuses: [], salesReceipt: '' };
+    }
+    const g = groups[j.invoice];
+    if(j.date && (!g.date || j.date < g.date)) g.date = j.date;
+    g.amount += (Number(j.qty)||0)*(Number(j.unitCost)||0) + optionsByJob(j.id).reduce((s,o)=>s+(Number(o.amount)||0),0);
+    g.statuses.push((j.paymentStatus||'UNPAID').toUpperCase());
+    if(j.salesReceipt && !g.salesReceipt) g.salesReceipt = j.salesReceipt;
+  });
+  return Object.values(groups).map(g=>{
+    const status = g.statuses.some(s=>statusClass(s)==='unpaid') ? 'UNPAID'
+      : g.statuses.some(s=>statusClass(s)==='pending') ? 'PENDING' : 'PAID';
+    const meta = (DATA.invoiceMeta||[]).find(m=>m.invoice===g.invoice);
+    const dateSent = meta?.dateSent || '';
+    // Due date defaults to 30 working days from when the invoice was sent
+    // (blank until a Date Sent is recorded), unless manually overridden here.
+    const dueDate = meta?.dueDate || (dateSent ? addWorkingDaysISO(dateSent, 30) : '');
+    return { ...g, status, dateSent, dueDate, paymentDate: meta?.paymentDate || '' };
+  });
+}
+function populateTrackFilterOptions(rows){
+  const fYear = document.getElementById('fTrackYear');
+  const currentYear = String(new Date().getFullYear());
+  const years = [...new Set([...rows.map(r=>r.date).filter(Boolean).map(d=>d.slice(0,4)), currentYear])].sort();
+  if(fYear.options.length<=1){
+    years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
+  }
+  const fMonth = document.getElementById('fTrackMonth');
+  if(fMonth.options.length<=1){
+    MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;fMonth.appendChild(o);});
+  }
+  if(!trackFiltersDefaulted){
+    fYear.value = '';
+    fMonth.value = '';
+    trackFiltersDefaulted = true;
+  }
+}
+const INVOICE_TRACKING_SORT_ACCESSORS = {
+  invoice: r=>r.invoice||'',
+  hostName: r=>r.hostName||'',
+  amount: r=>r.amount||0,
+  status: r=>r.status||'',
+  dateSent: r=>r.dateSent||'',
+  dueDate: r=>r.dueDate||'',
+  paymentDate: r=>r.paymentDate||'',
+};
+const selectedTrackInvoices = new Set();
+// "Mark as Paid" toggles to "Mark as Unpaid" once every job under the
+// selected invoice(s) is already PAID — a smart toggle, not two buttons.
+function updateTrackMarkPaidBtnLabel(){
+  const btn = document.getElementById('trackMarkPaidBtn');
+  if(!btn) return;
+  const jobs = DATA.jobs.filter(j=>selectedTrackInvoices.has(j.invoice));
+  const allPaid = jobs.length>0 && jobs.every(j=>(j.paymentStatus||'').toUpperCase()==='PAID');
+  btn.textContent = allPaid ? 'Mark as Unpaid' : 'Mark as Paid';
+}
+function renderInvoiceTracking(){
+  let rows = groupInvoices();
+  populateTrackFilterOptions(rows);
+  const year = document.getElementById('fTrackYear').value;
+  const month = document.getElementById('fTrackMonth').value;
+  const showPaid = document.getElementById('fTrackShowPaid').checked;
+  const search = document.getElementById('fTrackSearch').value.toLowerCase();
+  if(year) rows = rows.filter(r=>(r.date||'').slice(0,4)===year);
+  if(month) rows = rows.filter(r=>(r.date||'').slice(5,7)===month);
+  if(!showPaid) rows = rows.filter(r=>statusClass(r.status)!=='paid');
+  if(search) rows = rows.filter(r=>[r.invoice,r.hostName,r.company].some(v=>(v||'').toLowerCase().includes(search)));
+
+  const today = new Date().toISOString().slice(0,10);
+  rows.forEach(r=>{ r.overdue = !!(r.dueDate && r.dueDate < today && statusClass(r.status)!=='paid'); });
+  const overdueCount = rows.filter(r=>r.overdue).length;
+  const totalAmount = rows.reduce((s,r)=>s+r.amount,0);
+  document.getElementById('invoiceTrackingCards').innerHTML = `
+    <div class="card"><div class="label">Total Invoices</div><div class="value">${rows.length}</div></div>
+    <div class="card"><div class="label">Total Amount</div><div class="value">${fmtMoney(totalAmount)}</div></div>
+    <div class="card"><div class="label">Overdue</div><div class="value">${overdueCount}</div></div>
+  `;
+
+  if(sortState.invoiceTracking){
+    const acc = INVOICE_TRACKING_SORT_ACCESSORS[sortState.invoiceTracking.key];
+    const dir = sortState.invoiceTracking.dir === 'asc' ? 1 : -1;
+    rows.sort((a,b)=> dir * compareValues(acc(a), acc(b)));
+  } else {
+    rows.sort((a,b)=> (a.dateSent||'').localeCompare(b.dateSent||''));
+  }
+  updateSortArrows('invoiceTrackingTable', 'invoiceTracking');
+  document.getElementById('trackCount').textContent = `${rows.length} invoice${rows.length===1?'':'s'}`;
+
+  document.querySelector('#invoiceTrackingTable tbody').innerHTML = rows.length ? rows.map(r=>{
+    const overdue = r.overdue;
+    const displayStatus = overdue ? 'OVERDUE' : r.status;
+    const checked = selectedTrackInvoices.has(r.invoice) ? 'checked' : '';
+    return `
+    <tr>
+      <td><input type="checkbox" class="track-check" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" ${checked}></td>
+      <td>${r.invoice.replace(/\//g,'/<br>')}</td>
+      <td class="host-cell">${r.company||r.hostName||''}</td>
+      <td class="num">${fmtMoney(r.amount)}</td>
+      <td><span class="pill ${overdue ? 'overdue' : statusClass(r.status)}">${displayStatus}</span></td>
+      <td><input type="date" class="trackDateSent" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.dateSent||''}"></td>
+      <td><input type="date" class="trackDueDate" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.dueDate||''}" style="${overdue?'border-color:var(--red);color:var(--red);':''}"></td>
+      <td><input type="date" class="trackPaymentDate" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.paymentDate||''}"></td>
+      <td class="row-actions">
+        <button onclick="window.open('invoice.html?${new URLSearchParams({ws:WORKSPACE,inv:r.invoice})}','_blank')">View Invoice</button>
+        ${r.salesReceipt ? `<button onclick="window.open('receipt.html?${new URLSearchParams({ws:WORKSPACE,rcpt:r.salesReceipt})}','_blank')">View Receipt</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="9" class="empty">No invoices match these filters</td></tr>`;
+  const trackCheckable = [...document.querySelectorAll('.track-check')];
+  document.getElementById('trackSelectAll').checked = trackCheckable.length>0 && trackCheckable.every(c=>c.checked);
+  updateTrackMarkPaidBtnLabel();
+}
+async function upsertInvoiceMeta(invoice, patch){
+  const existing = (DATA.invoiceMeta||[]).find(m=>m.invoice===invoice);
+  if(existing){
+    const {error} = await sb.from(TBL.invoice_meta).update(patch).eq('id', existing.id);
+    if(error){ alert('Save failed: '+error.message); return; }
+    Object.assign(existing, patch);
+  } else {
+    const {data, error} = await sb.from(TBL.invoice_meta).insert({invoice, ...patch}).select();
+    if(error){ alert('Save failed: '+error.message); return; }
+    DATA.invoiceMeta = DATA.invoiceMeta || [];
+    DATA.invoiceMeta.push(data[0]);
+  }
+}
+// Setting a Payment Date is how a real payment gets recorded, so it should
+// flip the underlying job(s) to PAID too — not just sit next to an UNPAID pill.
+// Clearing the date reverses it back to UNPAID.
+async function setJobsPaymentStatus(invoice, status){
+  const jobs = DATA.jobs.filter(j=>j.invoice===invoice);
+  if(!jobs.length) return;
+  const ids = jobs.map(j=>j.id);
+  const {error} = await sb.from(TBL.jobs).update({paymentStatus:status}).in('id', ids);
+  if(error){ alert('Failed to update payment status: '+error.message); return; }
+  jobs.forEach(j=>{ j.paymentStatus = status; });
+}
+document.querySelector('#invoiceTrackingTable tbody').addEventListener('change', (e)=>{
+  if(e.target.matches('.trackDateSent')){
+    upsertInvoiceMeta(e.target.dataset.invoice, {dateSent: e.target.value || null}).then(()=>renderInvoiceTracking());
+  } else if(e.target.matches('.trackDueDate')){
+    upsertInvoiceMeta(e.target.dataset.invoice, {dueDate: e.target.value || null}).then(()=>renderInvoiceTracking());
+  } else if(e.target.matches('.trackPaymentDate')){
+    const invoice = e.target.dataset.invoice;
+    const paymentDate = e.target.value || null;
+    Promise.all([
+      upsertInvoiceMeta(invoice, {paymentDate}),
+      setJobsPaymentStatus(invoice, paymentDate ? 'PAID' : 'UNPAID'),
+    ]).then(()=>renderAll());
+  } else if(e.target.matches('.track-check')){
+    const inv = e.target.dataset.invoice;
+    if(e.target.checked) selectedTrackInvoices.add(inv); else selectedTrackInvoices.delete(inv);
+    document.getElementById('trackSelectAll').checked = [...document.querySelectorAll('.track-check')].every(c=>c.checked);
+    updateTrackMarkPaidBtnLabel();
+  }
+});
+document.getElementById('trackSelectAll').addEventListener('change', e=>{
+  document.querySelectorAll('.track-check').forEach(c=>{
+    c.checked = e.target.checked;
+    if(e.target.checked) selectedTrackInvoices.add(c.dataset.invoice); else selectedTrackInvoices.delete(c.dataset.invoice);
+  });
+  updateTrackMarkPaidBtnLabel();
+});
+document.getElementById('trackMarkPaidBtn').addEventListener('click', async ()=>{
+  if(selectedTrackInvoices.size===0){ alert('Select at least one invoice.'); return; }
+  const invNums = [...selectedTrackInvoices];
   const jobs = DATA.jobs.filter(j=>invNums.includes(j.invoice));
   if(jobs.length===0){ alert('No jobs found for the selected invoice(s).'); return; }
 
@@ -771,11 +1041,9 @@ document.getElementById('markPaidBtn').addEventListener('click', async ()=>{
   renderAll();
   alert(`Marked ${jobs.length} job(s) as ${target}.`);
 });
-document.getElementById('generateInvoiceBtn').addEventListener('click', ()=>{
-  if(selectedInvoices.size===0){ alert('Select at least one invoice to generate.'); return; }
-  const params = new URLSearchParams({ ws: WORKSPACE, inv: [...selectedInvoices].join(',') });
-  window.open(`invoice.html?${params}`, '_blank');
-});
+wireSortableHeaders('invoiceTrackingTable', 'invoiceTracking', ()=>renderInvoiceTracking());
+['fTrackYear','fTrackMonth','fTrackShowPaid'].forEach(id=>document.getElementById(id).addEventListener('change', renderInvoiceTracking));
+document.getElementById('fTrackSearch').addEventListener('input', renderInvoiceTracking);
 
 // ---------- Drivers ----------
 const KEY_DRIVERS = ['ALAN YONG','ELVIN SAI','SEAN SEAH','ALAN TOH'];
@@ -1332,6 +1600,7 @@ async function openJobModal(id){
   document.getElementById('f_company').value = job?.company || '';
   document.getElementById('f_costCentre').value = job?.costCentre || '';
   document.getElementById('f_uid').value = job?.uid || '';
+  document.getElementById('f_sinadm').checked = !!job?.sentFromSinadm;
   document.getElementById('f_pax').value = job ? (extractPax(job.details) || '') : '';
   document.getElementById('f_details').value = job ? extractRoute(job.details) : '';
   document.getElementById('f_start').value = job?.startTime || '';
@@ -1422,6 +1691,7 @@ document.getElementById('saveJobBtn').addEventListener('click', async ()=>{
     company: document.getElementById('f_company').value,
     costCentre: document.getElementById('f_costCentre').value,
     uid,
+    sentFromSinadm: document.getElementById('f_sinadm').checked,
     details: buildTripDetails({hostName, uid, costCentre: document.getElementById('f_costCentre').value, pax, itinerary, driver, startTime, endTime, jobType: document.getElementById('f_jobType').value}),
     startTime,
     endTime,
@@ -1499,7 +1769,8 @@ let maerskFiltersDefaulted = false;
 
 function getMaerskJobs(){
   return DATA.jobs.filter(j=>(j.company||'').trim().toUpperCase() === MAERSK_SUMMARY_COMPANY
-    && (j.costCentre||'').trim().toUpperCase().startsWith('SG51'));
+    && (j.costCentre||'').trim().toUpperCase().startsWith('SG51')
+    && j.sentFromSinadm);
 }
 
 function populateMaerskFilterOptions(){
@@ -1507,15 +1778,16 @@ function populateMaerskFilterOptions(){
   const fYear = document.getElementById('fMaerskYear');
   const currentYear = String(new Date().getFullYear());
   const years = [...new Set([...maerskJobs.map(j=>j.date).filter(Boolean).map(d=>d.slice(0,4)), currentYear])].sort();
-  if(fYear.options.length<=1){
+  if(fYear.options.length===0){
     years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
   }
   const fMonth = document.getElementById('fMaerskMonth');
-  if(fMonth.options.length<=1){
+  if(fMonth.options.length===0){
     MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;fMonth.appendChild(o);});
   }
-  // Default the view to the current real-world month, once per page load —
-  // not the latest month with data, so it doesn't get stuck on an old month.
+  // Always a specific month — no "All" option, so this summary never shows
+  // more than one month at a time. Defaults to the current real-world month
+  // once per page load, not the latest month with data.
   if(!maerskFiltersDefaulted){
     fYear.value = currentYear;
     fMonth.value = String(new Date().getMonth()+1).padStart(2,'0');
@@ -1533,6 +1805,8 @@ function renderMaerskSummary(){
   if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
   rows.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
 
+  // j.cost is already qty*unitCost + additional options (see computedCost in
+  // the job form), so summing it plus optionsByJob() again would double-count.
   const totalSales = rows.reduce((s,j)=>s+(Number(j.cost)||0),0);
   const totalPayout = rows.reduce((s,j)=>s+(Number(j.driverPayout)||0),0);
   const totalCoy = rows.reduce((s,j)=>s+(Number(j.coyFund)||0),0);
@@ -1554,11 +1828,25 @@ function renderMaerskSummary(){
       <td class="host-cell">${j.hostName||''}</td>
       <td>${j.uid||''}</td>
       <td>${j.costCentre||''}</td>
-      <td class="details-cell">${j.details ? `<details class="route"><summary>View</summary><div class="details-text">${escHtml(j.details)}</div></details>` : ''}</td>
+      <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${j.qty ?? ''}</td>
       <td class="num">${fmtMoney(j.unitCost)}</td>
-      <td class="num">${fmtMoney(j.cost)}</td>
-    </tr>`).join('') : `<tr><td colspan="11" class="empty">No MAERSK SINGAPORE PTE LTD jobs found</td></tr>`;
+      <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
+    </tr>
+    ${optionsByJob(j.id).map(o=>`
+    <tr>
+      <td>${fmtDate(j.date)}</td>
+      <td>${j.invoice||''}</td>
+      <td class="driver-cell">${j.driver||''}</td>
+      <td class="jobtype-cell">${fmtOptionLabel(o)}</td>
+      <td class="host-cell">${j.hostName||''}</td>
+      <td>${j.uid||''}</td>
+      <td>${j.costCentre||''}</td>
+      <td class="details-cell">${renderOptionDetailsCell(j, o)}</td>
+      <td class="num">1</td>
+      <td class="num">${fmtMoney(o.amount)}</td>
+      <td class="num">${fmtMoney(o.amount)}</td>
+    </tr>`).join('')}`).join('') : `<tr><td colspan="11" class="empty">No MAERSK SINGAPORE PTE LTD jobs found</td></tr>`;
   renderPagination('maerskPagination', 'maersk', page, totalPages, renderMaerskSummary);
 }
 document.getElementById('fMaerskYear').addEventListener('change', ()=>{ pageState.maersk=1; renderMaerskSummary(); });
@@ -1570,15 +1858,42 @@ document.getElementById('exportMaerskBtn').addEventListener('click', ()=>{
   let rows = getMaerskJobs();
   if(year) rows = rows.filter(j=>(j.date||'').slice(0,4)===year);
   if(month) rows = rows.filter(j=>(j.date||'').slice(5,7)===month);
+  rows = rows.filter(j=>(j.hostName||'').trim().toUpperCase() !== 'LILIAN WONG');
   rows.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.id-b.id));
 
   if(!rows.length){ alert('No MAERSK SINGAPORE PTE LTD jobs match the current filter.'); return; }
 
-  const cols = ['date','invoice','driver','jobType','hostName','uid','costCentre','details','qty','unitCost','cost','driverPayout','coyFund','paymentStatus','remarks'];
-  const headerLabels = ['Date','Invoice #','Driver','Job Type','Host','UID','Cost Centre','Trip Details','Qty','Unit Cost','Cost','Driver Payout','Company Fund','Payment Status','Remarks'];
+  const cols = ['date','invoice','driver','jobType','hostName','uid','costCentre','details','qty','unitCost','cost','remarks'];
+  const headerLabels = ['Date','Invoice #','Driver','Job Type','Host','UID','Cost Centre','Trip Details','Qty','Unit Cost','Cost','Remarks'];
   const header = headerLabels.map(csvField).join(',');
-  const dataRows = rows.map(j=>cols.map(c=>csvField(c==='date'?fmtDate(j[c]):j[c])).join(','));
-  const csv = [header, ...dataRows].join('\n');
+  const dataRows = rows.flatMap(j=>{
+    // j.cost already includes additional options (see computedCost in the job
+    // form), so the job's own row shows the base qty*unitCost only — the
+    // option row(s) below carry the rest, and together they add up correctly.
+    const jobRow = cols.map(c=>{
+      if(c==='date') return csvField(fmtDate(j.date));
+      if(c==='cost') return csvField(((Number(j.qty)||0)*(Number(j.unitCost)||0)).toFixed(2));
+      return csvField(j[c]);
+    }).join(',');
+    const optionRows = optionsByJob(j.id).map(o=>cols.map(c=>{
+      if(c==='date') return csvField(fmtDate(j.date));
+      if(c==='invoice') return csvField(j.invoice);
+      if(c==='driver') return csvField(j.driver);
+      if(c==='jobType') return csvField(fmtOptionLabel(o));
+      if(c==='hostName') return csvField(j.hostName);
+      if(c==='uid') return csvField(j.uid);
+      if(c==='costCentre') return csvField(j.costCentre);
+      if(c==='details') return csvField(o.note||'');
+      if(c==='qty') return csvField(1);
+      if(c==='unitCost') return csvField(Number(o.amount||0).toFixed(2));
+      if(c==='cost') return csvField(Number(o.amount||0).toFixed(2));
+      return '';
+    }).join(','));
+    return [jobRow, ...optionRows];
+  });
+  const totalCost = rows.reduce((s,j)=>s+(Number(j.cost)||0),0);
+  const totalRow = cols.map(c=>c==='cost' ? csvField(totalCost.toFixed(2)) : c==='hostName' ? csvField('TOTAL') : '').join(',');
+  const csv = [header, ...dataRows, totalRow].join('\n');
   const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1592,6 +1907,7 @@ function renderAll(){
   renderDashboard();
   renderJobs();
   renderInvoices();
+  renderInvoiceTracking();
   renderDrivers();
   renderClients();
   renderRates();
