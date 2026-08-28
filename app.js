@@ -657,9 +657,10 @@ document.getElementById('invSelectAll').addEventListener('change', e=>{
 });
 
 // ---------- Auto-assign invoice numbers ----------
-// Rule: MAERSK SINGAPORE PTE LTD bills all trips for a calendar month on one invoice.
-// Every other company gets one invoice per date.
-const MAERSK_MONTHLY_COMPANY = 'MAERSK SINGAPORE PTE LTD';
+// Rule: one company per workspace bills all trips for a calendar month on one
+// invoice (MAERSK SINGAPORE PTE LTD for MAERSK, MFS TECHNOLOGY (S) PTE LTD for
+// ELITE). Every other company gets one invoice per date.
+const MAERSK_MONTHLY_COMPANY = WORKSPACE === 'nonmaersk' ? 'MFS TECHNOLOGY (S) PTE LTD' : 'MAERSK SINGAPORE PTE LTD';
 const INVOICE_PREFIX = WORKSPACE === 'nonmaersk' ? 'EINV' : 'MINV';
 function nextInvoiceSeqForMonth(yyyymm){
   let max = 0;
@@ -1134,6 +1135,7 @@ function fmtOptionLabel(o){
 // MISCELLANEOUS and ADDITIONAL STOP (any variant) both take a free-text
 // description, since neither is specific enough on its own.
 function optionTypeNeedsNote(v){
+  if(WORKSPACE === 'nonmaersk' && v === 'MIDNIGHT SURCHARGE (LOCAL)') return true;
   return v === 'MISCELLANEOUS' || v === '杂项' || /^ADDITIONAL STOP/i.test(v||'');
 }
 function updateOptionNoteVisibility(row){
@@ -1160,7 +1162,15 @@ function addOptionRow(optionType, amount, note){
   row.querySelector('.optionType').value = optionType || '';
   row.querySelector('.removeRowBtn').addEventListener('click', ()=>{ row.remove(); recalc(); });
   row.querySelector('.optionAmount').addEventListener('input', recalc);
-  row.querySelector('.optionType').addEventListener('change', ()=>{ applyOptionRate(row); updateOptionNoteVisibility(row); });
+  row.querySelector('.optionType').addEventListener('change', ()=>{
+    applyOptionRate(row);
+    updateOptionNoteVisibility(row);
+    const optType = row.querySelector('.optionType').value;
+    if(WORKSPACE === 'nonmaersk' && optType === 'MIDNIGHT SURCHARGE (LOCAL)'){
+      const noteEl = row.querySelector('.optionNote');
+      if(!noteEl.value.trim()) noteEl.value = '0000 - 0600';
+    }
+  });
   updateOptionNoteVisibility(row);
   list.appendChild(row);
 }
@@ -1289,8 +1299,13 @@ function applyRateToUnitCost(){
 }
 document.getElementById('f_unitCost').addEventListener('input', ()=>{ unitCostEdited = true; });
 document.getElementById('f_jobType').addEventListener('change', ()=>{
-  refreshVehicleField(document.getElementById('f_jobType').value);
+  const jt = document.getElementById('f_jobType').value;
+  refreshVehicleField(jt);
   applyRateToUnitCost();
+  if(WORKSPACE === 'nonmaersk' && jt === 'MIDNIGHT SURCHARGE (LOCAL)'){
+    const detailsEl = document.getElementById('f_details');
+    if(!detailsEl.value.trim()) detailsEl.value = '0000 - 0600';
+  }
 });
 document.getElementById('f_vehicle').addEventListener('change', applyRateToUnitCost);
 

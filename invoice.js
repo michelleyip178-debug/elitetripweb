@@ -175,7 +175,7 @@ async function init(){
         <div class="invoice-meta">
           <table>
             <tr><td class="mlabel">INVOICE</td><td class="mval">${escHtml(inv)}</td></tr>
-            <tr><td class="mlabel">DATE</td><td class="mval">${escHtml(invDate ? toDMY(invDate) : '')}</td></tr>
+            <tr><td class="mlabel">DATE</td><td class="mval"><input type="text" class="invoice-date-input" value="${escHtml(invDate ? toDMY(invDate) : '')}"></td></tr>
             <tr><td class="mlabel">DUE DATE</td><td class="mval">${escHtml(dueDateDMY)}</td></tr>
           </table>
         </div>
