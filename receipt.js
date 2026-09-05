@@ -123,13 +123,20 @@ async function init(){
     const rcptDate = dates.length ? dates.reduce((a,b)=>a>b?a:b) : '';
 
     let subtotal = 0;
+    let creditCardTotal = 0;
     const rows = rcptJobs.map(j=>{
       const cost = (Number(j.qty)||0) * (Number(j.unitCost)||0);
       subtotal += cost;
-      const addonRows = optionsByJob(j.id).map(o=>{
+      const addonRows = optionsByJob(j.id).filter(o=>(o.optionType||'').toUpperCase()!=='CREDIT CARD CHARGES').map(o=>{
         subtotal += Number(o.amount)||0;
         return `<tr><td></td><td>${escHtml(o.optionType||'')}</td><td>${escHtml(o.note||'')}</td><td class="num">1</td><td class="num">${fmtMoney(o.amount)}</td><td class="num">${fmtMoney(o.amount)}</td></tr>`;
       }).join('');
+      // Credit card charges apply to the whole booking, not per job/driver —
+      // pulled out here and combined into one line below instead of repeating.
+      optionsByJob(j.id).filter(o=>(o.optionType||'').toUpperCase()==='CREDIT CARD CHARGES').forEach(o=>{
+        subtotal += Number(o.amount)||0;
+        creditCardTotal += Number(o.amount)||0;
+      });
       return `<tr>
         <td>${j.date ? toDMY(j.date) : ''}</td>
         <td>${escHtml(j.jobType||'')}</td>
@@ -138,7 +145,7 @@ async function init(){
         <td class="num">${Number(j.unitCost||0).toFixed(2)}</td>
         <td class="num">${Number(cost).toFixed(2)}</td>
       </tr>${addonRows}`;
-    }).join('');
+    }).join('') + (creditCardTotal > 0 ? `<tr><td></td><td>CREDIT CARD CHARGES</td><td>CREDIT CARD ADDITIONAL CHARGES 10%</td><td class="num">1</td><td class="num">${fmtMoney(creditCardTotal)}</td><td class="num">${fmtMoney(creditCardTotal)}</td></tr>` : '');
 
     const billToLines = [company ? company : hostName];
     if(company && hostName) billToLines.push(hostName);
