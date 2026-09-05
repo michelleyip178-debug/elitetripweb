@@ -505,7 +505,7 @@ function renderJobs(_skipFit){
     <tr>
       <td>${fmtDate(j.date)}</td>
       <td>${j.invoice||''}</td>
-      <td class="driver-cell">${j.driver||''}</td>
+      <td class="driver-cell"></td>
       <td class="jobtype-cell">${fmtOptionLabel(o)}</td>
       <td class="time-col">${j.startTime||''}</td>
       <td class="time-col">${j.endTime||''}</td>
@@ -638,7 +638,7 @@ function renderInvoices(_skipFit){
       <td></td>
       <td>${fmtDate(j.date)}</td>
       <td>${inv}</td>
-      <td class="driver-cell">${j.driver||''}</td>
+      <td class="driver-cell"></td>
       <td class="jobtype-cell">${fmtOptionLabel(o)}</td>
       <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${renderOptionDetailsCell(j, o)}</td>
@@ -1829,7 +1829,7 @@ function renderMaerskSummary(){
     <tr>
       <td>${fmtDate(j.date)}</td>
       <td>${j.invoice||''}</td>
-      <td class="driver-cell">${j.driver||''}</td>
+      <td class="driver-cell"></td>
       <td class="jobtype-cell">${fmtOptionLabel(o)}</td>
       <td class="host-cell">${j.hostName||''}</td>
       <td>${j.uid||''}</td>
