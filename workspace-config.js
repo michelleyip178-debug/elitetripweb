@@ -20,6 +20,11 @@ const TBL = {
   jobs: 'jobs' + TABLE_SUFFIX,
   job_options: 'job_options' + TABLE_SUFFIX,
   invoice_meta: 'invoice_meta' + TABLE_SUFFIX,
+  // Finance tables are shared across both workspaces — one business, one set
+  // of bank accounts and one balance sheet — so these are never suffixed.
+  finance_accounts: 'finance_accounts',
+  finance_transactions: 'finance_transactions',
+  finance_liabilities: 'finance_liabilities',
 };
 
 // Same job types across both workspaces (the job_types DB table is unused/empty —

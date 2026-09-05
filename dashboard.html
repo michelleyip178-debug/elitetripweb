@@ -45,6 +45,7 @@
   <button data-view="drivers">Drivers</button>
   <button data-view="clients">Clients</button>
   <button data-view="jobtypes">Job Types &amp; Rates</button>
+  <button data-view="finance">Finance</button>
   <button data-view="maersk" id="maerskNavBtn">MAERSK Summary</button>
 </nav>
 
@@ -247,6 +248,52 @@
     <div class="pagination" id="ratesPagination"></div>
   </div>
 
+  <!-- FINANCE -->
+  <div class="view" id="view-finance">
+    <div class="toolbar">
+      <span style="font-weight:700;font-size:14px;">Accounts</span>
+      <div class="spacer"></div>
+      <button class="btn secondary" id="addAccountBtn">+ Add Account</button>
+    </div>
+    <div class="cards" id="financeAccountCards"></div>
+
+    <div class="toolbar" style="margin-top:8px;">
+      <span style="font-weight:700;font-size:14px;">Transactions</span>
+      <select id="fFinType">
+        <option value="">All Types</option>
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
+        <option value="transfer">Transfer</option>
+      </select>
+      <input type="search" id="fFinSearch" placeholder="Search category, description, invoice…">
+      <div class="spacer"></div>
+      <span class="small muted" id="finTxnCount"></span>
+      <button class="btn" id="addTransactionBtn">+ Add Transaction</button>
+    </div>
+    <div class="panel" style="overflow:auto;max-height:50vh;">
+      <table id="financeTransactionsTable">
+        <thead><tr>
+          <th class="sortable" data-key="date">Date<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="account">Account<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="type">Type<span class="sortArrow"></span></th>
+          <th class="sortable" data-key="category">Category<span class="sortArrow"></span></th>
+          <th>Description</th>
+          <th class="num sortable" data-key="amount">Amount<span class="sortArrow"></span></th>
+          <th>Source</th>
+          <th></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="toolbar" style="margin-top:8px;">
+      <span style="font-weight:700;font-size:14px;">Balance Sheet</span>
+      <div class="spacer"></div>
+      <button class="btn secondary" id="addLiabilityBtn">+ Add Liability</button>
+    </div>
+    <div class="panel" id="balanceSheetPanel"></div>
+  </div>
+
   <!-- MAERSK SUMMARY -->
   <div class="view" id="view-maersk">
     <div class="toolbar">
@@ -392,9 +439,71 @@
   </div>
 </div>
 
+<!-- FINANCE ACCOUNT MODAL -->
+<div class="modal-bg" id="finAccountModalBg">
+  <div class="modal">
+    <h3 id="finAccountModalTitle">New Account</h3>
+    <div class="form-grid">
+      <div class="full"><label>Account Name</label><input type="text" id="fa_name" placeholder="e.g. DBS Operating Account"></div>
+      <div><label>Type</label><select id="fa_type"><option value="bank">Bank</option><option value="cash">Cash</option></select></div>
+      <div><label>Opening Balance (S$)</label><input type="number" id="fa_opening" step="any" value="0"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn danger" id="deleteAccountBtn" style="display:none;margin-right:auto;">Delete</button>
+      <button class="btn secondary" id="cancelAccountBtn">Cancel</button>
+      <button class="btn" id="saveAccountBtn">Save Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- FINANCE TRANSACTION MODAL -->
+<div class="modal-bg" id="finTxnModalBg">
+  <div class="modal">
+    <h3 id="finTxnModalTitle">New Transaction</h3>
+    <div class="form-grid">
+      <div><label>Date</label><input type="date" id="ft_date"></div>
+      <div><label>Type</label><select id="ft_type">
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
+        <option value="transfer">Transfer</option>
+      </select></div>
+      <div><label>Account</label><select id="ft_account"></select></div>
+      <div id="ft_transferToWrap" style="display:none;"><label>Transfer To</label><select id="ft_transferTo"></select></div>
+      <div><label>Category</label><input type="text" id="ft_category" list="ft_categoryList" placeholder="e.g. Fuel, Maintenance, Trip Revenue">
+        <datalist id="ft_categoryList"></datalist>
+      </div>
+      <div><label>Amount (S$)</label><input type="number" id="ft_amount" step="any"></div>
+      <div class="full"><label>Description</label><input type="text" id="ft_description"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn danger" id="deleteTxnBtn" style="display:none;margin-right:auto;">Delete</button>
+      <button class="btn secondary" id="cancelTxnBtn">Cancel</button>
+      <button class="btn" id="saveTxnBtn">Save Transaction</button>
+    </div>
+  </div>
+</div>
+
+<!-- FINANCE LIABILITY MODAL -->
+<div class="modal-bg" id="finLiabilityModalBg">
+  <div class="modal">
+    <h3 id="finLiabilityModalTitle">New Liability</h3>
+    <div class="form-grid">
+      <div class="full"><label>Name</label><input type="text" id="fl_name" placeholder="e.g. Vehicle Loan — Toyota Alphard"></div>
+      <div><label>Amount Owed (S$)</label><input type="number" id="fl_amount" step="any"></div>
+      <div class="full"><label>Notes</label><input type="text" id="fl_notes"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn danger" id="deleteLiabilityBtn" style="display:none;margin-right:auto;">Delete</button>
+      <button class="btn secondary" id="cancelLiabilityBtn">Cancel</button>
+      <button class="btn" id="saveLiabilityBtn">Save Liability</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="workspace-config.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
+<script src="finance.js"></script>
 </body>
 </html>

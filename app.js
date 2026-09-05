@@ -60,6 +60,8 @@ async function initApp(){
   loginOverlay.classList.add('hidden');
   DATA = await loadData();
   renderAll();
+  // finance.js defines this if loaded — kept optional so app.js doesn't hard-depend on it.
+  if(typeof initFinance === 'function') initFinance();
 }
 
 sb.auth.getSession().then(({data:{session}})=>{
@@ -996,6 +998,9 @@ async function setJobsPaymentStatus(invoice, status){
   const {error} = await sb.from(TBL.jobs).update({paymentStatus:status}).in('id', ids);
   if(error){ alert('Failed to update payment status: '+error.message); return; }
   jobs.forEach(j=>{ j.paymentStatus = status; });
+  // finance.js defines this if loaded — books/reverses the income+payout
+  // entries for this invoice so the finance module stays in sync.
+  if(typeof syncInvoiceFinanceEntries === 'function') await syncInvoiceFinanceEntries(invoice, jobs, status);
 }
 document.querySelector('#invoiceTrackingTable tbody').addEventListener('change', (e)=>{
   if(e.target.matches('.trackDateSent')){
@@ -1033,10 +1038,7 @@ document.getElementById('trackMarkPaidBtn').addEventListener('click', async ()=>
   const target = allPaid ? 'UNPAID' : 'PAID';
   if(!confirm(`Mark ${jobs.length} job(s) across ${invNums.length} invoice(s) as ${target}?`)) return;
 
-  const ids = jobs.map(j=>j.id);
-  const {error} = await sb.from(TBL.jobs).update({paymentStatus:target}).in('id', ids);
-  if(error){ alert('Failed to update status: '+error.message); return; }
-  jobs.forEach(j=>{ j.paymentStatus = target; });
+  for(const inv of invNums) await setJobsPaymentStatus(inv, target);
   renderAll();
   alert(`Marked ${jobs.length} job(s) as ${target}.`);
 });
@@ -1897,5 +1899,6 @@ function renderAll(){
   renderClients();
   renderRates();
   renderMaerskSummary();
+  if(typeof renderFinance === 'function') renderFinance();
 }
 // Initial render handled by initApp() after auth check
