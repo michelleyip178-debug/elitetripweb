@@ -110,14 +110,17 @@ function renderFinance(){
         <div class="label">${escHtml(a.name)} (${a.type==='cash'?'Cash':'Bank'})</div>
         <div class="value">${fmtMoney(accountBalance(a.id))}</div>
       </div>`).join('')
-    : `<div class="card"><div class="label">No accounts yet</div><div class="value" style="font-size:13px;font-weight:400;color:var(--muted);">Click "+ Add Account" to start tracking a bank or cash account.</div></div>`;
+    : `<div class="card"><div class="label">No accounts yet</div></div>`;
 
   // ---------- Transactions ----------
   const type = document.getElementById('fFinType').value;
+  const category = document.getElementById('fFinCategory').value;
   const search = document.getElementById('fFinSearch').value.toLowerCase();
+  populateFinCategoryFilter();
   let rows = FINANCE.transactions.slice();
   if(type) rows = rows.filter(t=>t.type===type);
-  if(search) rows = rows.filter(t=>[t.category,t.description,t.invoice].some(v=>(v||'').toLowerCase().includes(search)));
+  if(category) rows = rows.filter(t=> category==='__uncategorized__' ? !t.category : t.category===category);
+  if(search) rows = rows.filter(t=>[t.description,t.invoice].some(v=>(v||'').toLowerCase().includes(search)));
 
   if(sortState.finance){
     const acc = FINANCE_SORT_ACCESSORS[sortState.finance.key];
@@ -132,12 +135,13 @@ function renderFinance(){
   document.querySelector('#financeTransactionsTable tbody').innerHTML = rows.length ? rows.map(t=>{
     const typeLabel = t.type.charAt(0).toUpperCase()+t.type.slice(1);
     const pillClass = t.type==='income' ? 'paid' : t.type==='expense' ? 'unpaid' : 'pending';
+    const descFull = `${t.description||''}${t.source==='invoice' ? ` (Invoice ${t.invoice||''})` : ''}`;
     return `
     <tr>
       <td>${fmtDate(t.date)}</td>
       <td><span class="pill ${pillClass}">${typeLabel}</span></td>
       <td>${escHtml(t.category||'')}</td>
-      <td>${escHtml(t.description||'')}${t.source==='invoice' ? ` <span class="small muted">(Invoice ${escHtml(t.invoice||'')})</span>` : ''}</td>
+      <td class="fin-desc-cell" title="${escHtml(descFull)}">${escHtml(descFull)}</td>
       <td class="num">${fmtMoney(t.amount)}</td>
       <td class="row-actions">${t.source==='invoice' ? '' : `<button onclick="openFinTxnModal(${t.id})">Edit</button>`}</td>
     </tr>`;
@@ -145,7 +149,17 @@ function renderFinance(){
 
   renderBalanceSheet();
 }
+function populateFinCategoryFilter(){
+  const sel = document.getElementById('fFinCategory');
+  if(sel.options.length>1) return;
+  const used = [...new Set(FINANCE.transactions.map(t=>t.category).filter(Boolean))];
+  const all = [...new Set([...FINANCE_CATEGORIES, ...used])].sort();
+  sel.innerHTML = '<option value="">All Categories</option>'
+    + all.map(c=>`<option value="${c}">${c}</option>`).join('')
+    + '<option value="__uncategorized__">Uncategorized</option>';
+}
 document.getElementById('fFinType').addEventListener('change', renderFinance);
+document.getElementById('fFinCategory').addEventListener('change', renderFinance);
 document.getElementById('fFinSearch').addEventListener('input', renderFinance);
 wireSortableHeaders('financeTransactionsTable', 'finance', renderFinance);
 
@@ -215,7 +229,6 @@ function openFinAccountModal(id){
   document.getElementById('deleteAccountBtn').style.display = acc ? '' : 'none';
   document.getElementById('finAccountModalBg').classList.add('active');
 }
-document.getElementById('addAccountBtn').addEventListener('click', ()=>openFinAccountModal(null));
 document.getElementById('cancelAccountBtn').addEventListener('click', ()=>document.getElementById('finAccountModalBg').classList.remove('active'));
 document.getElementById('saveAccountBtn').addEventListener('click', async ()=>{
   const name = document.getElementById('fa_name').value.trim();
@@ -260,10 +273,11 @@ function openFinTxnModal(id){
   document.getElementById('ft_type').value = t?.type || 'expense';
   document.getElementById('ft_account').value = t?.accountId || FINANCE.accounts[0].id;
   document.getElementById('ft_transferTo').value = t?.transferToAccountId || FINANCE.accounts[0].id;
-  document.getElementById('ft_category').value = t?.category || '';
+  const categoryOptions = [...new Set([...FINANCE_CATEGORIES, ...(t?.category ? [t.category] : [])])];
+  document.getElementById('ft_category').innerHTML = categoryOptions.map(c=>`<option value="${c}">${c}</option>`).join('');
+  document.getElementById('ft_category').value = t?.category || FINANCE_CATEGORIES[0];
   document.getElementById('ft_amount').value = t?.amount ?? '';
   document.getElementById('ft_description').value = t?.description || '';
-  document.getElementById('ft_categoryList').innerHTML = FINANCE_CATEGORIES.map(c=>`<option value="${c}">`).join('');
   document.getElementById('ft_transferToWrap').style.display = document.getElementById('ft_type').value==='transfer' ? '' : 'none';
   document.getElementById('deleteTxnBtn').style.display = t ? '' : 'none';
   document.getElementById('finTxnModalBg').classList.add('active');

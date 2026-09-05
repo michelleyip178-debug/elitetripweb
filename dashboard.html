@@ -252,8 +252,6 @@
   <div class="view" id="view-finance">
     <div class="toolbar">
       <span style="font-weight:700;font-size:14px;">Accounts</span>
-      <div class="spacer"></div>
-      <button class="btn secondary" id="addAccountBtn">+ Add Account</button>
     </div>
     <div class="cards" id="financeAccountCards"></div>
 
@@ -265,7 +263,8 @@
         <option value="expense">Expense</option>
         <option value="transfer">Transfer</option>
       </select>
-      <input type="search" id="fFinSearch" placeholder="Search category, description, invoice…">
+      <select id="fFinCategory"><option value="">All Categories</option></select>
+      <input type="search" id="fFinSearch" placeholder="Search description, invoice…">
       <div class="spacer"></div>
       <span class="small muted" id="finTxnCount"></span>
       <button class="btn" id="addTransactionBtn">+ Add Transaction</button>
@@ -467,9 +466,7 @@
       </select></div>
       <div><label>Account</label><select id="ft_account"></select></div>
       <div id="ft_transferToWrap" style="display:none;"><label>Transfer To</label><select id="ft_transferTo"></select></div>
-      <div><label>Category</label><input type="text" id="ft_category" list="ft_categoryList" placeholder="e.g. Fuel, Maintenance, Trip Revenue">
-        <datalist id="ft_categoryList"></datalist>
-      </div>
+      <div><label>Category</label><select id="ft_category"></select></div>
       <div><label>Amount (S$)</label><input type="number" id="ft_amount" step="any"></div>
       <div class="full"><label>Description</label><input type="text" id="ft_description"></div>
     </div>
