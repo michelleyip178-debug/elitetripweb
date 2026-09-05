@@ -133,7 +133,7 @@ function renderFinance(){
   document.querySelector('#financeTransactionsTable tbody').innerHTML = rows.length ? rows.map(t=>{
     const typeLabel = t.type.charAt(0).toUpperCase()+t.type.slice(1);
     const pillClass = t.type==='income' ? 'paid' : t.type==='expense' ? 'unpaid' : 'pending';
-    const descFull = `${t.description||''}${t.invoice ? ` (Invoice ${t.invoice})` : ''}`;
+    const descFull = `${t.description||''}${t.driver ? ` (Driver: ${t.driver})` : ''}${t.invoice ? ` (Invoice ${t.invoice})` : ''}`;
     return `
     <tr>
       <td>${fmtDate(t.date)}</td>
