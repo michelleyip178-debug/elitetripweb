@@ -97,6 +97,8 @@ const FINANCE_SORT_ACCESSORS = {
   date: t=>t.date||'',
   type: t=>t.type||'',
   category: t=>t.category||'',
+  driver: t=>t.driver||'',
+  invoice: t=>t.invoice||'',
   amount: t=>Number(t.amount)||0,
 };
 
@@ -133,20 +135,18 @@ function renderFinance(){
   document.querySelector('#financeTransactionsTable tbody').innerHTML = rows.length ? rows.map(t=>{
     const typeLabel = t.type.charAt(0).toUpperCase()+t.type.slice(1);
     const pillClass = t.type==='income' ? 'paid' : t.type==='expense' ? 'unpaid' : 'pending';
-    const tags = [t.driver ? `Driver: ${t.driver}` : '', t.invoice ? `Invoice: ${t.invoice}` : ''].filter(Boolean);
     return `
     <tr>
       <td>${fmtDate(t.date)}</td>
       <td><span class="pill ${pillClass}">${typeLabel}</span></td>
       <td>${escHtml(t.category||'')}</td>
-      <td>
-        <div class="fin-desc-cell" title="${escHtml(t.description||'')}">${escHtml(t.description||'')}</div>
-        ${tags.length ? `<div class="small muted">${escHtml(tags.join(' · '))}</div>` : ''}
-      </td>
+      <td class="fin-desc-cell" title="${escHtml(t.description||'')}">${escHtml(t.description||'')}</td>
+      <td>${escHtml(t.driver||'')}</td>
+      <td>${escHtml(t.invoice||'')}</td>
       <td class="num">${fmtMoney(t.amount)}</td>
       <td class="row-actions">${t.source==='invoice' ? '' : `<button onclick="openFinTxnModal(${t.id})">Edit</button>`}</td>
     </tr>`;
-  }).join('') : `<tr><td colspan="6" class="empty">No transactions match these filters</td></tr>`;
+  }).join('') : `<tr><td colspan="8" class="empty">No transactions match these filters</td></tr>`;
 
   renderBalanceSheet();
 }
