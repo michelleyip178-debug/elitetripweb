@@ -113,11 +113,16 @@ function renderFinance(){
     : `<div class="card"><div class="label">No accounts yet</div></div>`;
 
   // ---------- Transactions ----------
+  populateFinDateFilters();
+  const year = document.getElementById('fFinYear').value;
+  const month = document.getElementById('fFinMonth').value;
   const type = document.getElementById('fFinType').value;
   const category = document.getElementById('fFinCategory').value;
   const search = document.getElementById('fFinSearch').value.toLowerCase();
   populateFinCategoryFilter();
   let rows = FINANCE.transactions.slice();
+  if(year) rows = rows.filter(t=>(t.date||'').slice(0,4)===year);
+  if(month) rows = rows.filter(t=>(t.date||'').slice(5,7)===month);
   if(type) rows = rows.filter(t=>t.type===type);
   if(category) rows = rows.filter(t=> category==='__uncategorized__' ? !t.category : t.category===category);
   if(search) rows = rows.filter(t=>[t.description,t.invoice].some(v=>(v||'').toLowerCase().includes(search)));
@@ -159,6 +164,17 @@ function populateFinCategoryFilter(){
     + all.map(c=>`<option value="${c}">${c}</option>`).join('')
     + '<option value="__uncategorized__">Uncategorized</option>';
 }
+function populateFinDateFilters(){
+  const fYear = document.getElementById('fFinYear');
+  const fMonth = document.getElementById('fFinMonth');
+  if(fYear.options.length>1) return;
+  const currentYear = String(new Date().getFullYear());
+  const years = [...new Set([...FINANCE.transactions.map(t=>t.date).filter(Boolean).map(d=>d.slice(0,4)), currentYear])].sort();
+  years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
+  MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;fMonth.appendChild(o);});
+}
+document.getElementById('fFinYear').addEventListener('change', renderFinance);
+document.getElementById('fFinMonth').addEventListener('change', renderFinance);
 document.getElementById('fFinType').addEventListener('change', renderFinance);
 document.getElementById('fFinCategory').addEventListener('change', renderFinance);
 document.getElementById('fFinSearch').addEventListener('input', renderFinance);
