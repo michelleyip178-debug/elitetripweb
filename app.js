@@ -679,9 +679,10 @@ document.getElementById('invSelectAll').addEventListener('change', e=>{
 });
 
 // ---------- Auto-assign invoice numbers ----------
-// Rule: MAERSK SINGAPORE PTE LTD bills all trips for a calendar month on one invoice.
-// Every other company gets one invoice per date.
-const MAERSK_MONTHLY_COMPANY = 'MAERSK SINGAPORE PTE LTD';
+// Rule: one company per workspace bills all trips for a calendar month on one
+// invoice (MAERSK SINGAPORE PTE LTD for MAERSK, MFS TECHNOLOGY (S) PTE LTD for
+// ELITE). Every other company gets one invoice per date.
+const MAERSK_MONTHLY_COMPANY = WORKSPACE === 'nonmaersk' ? 'MFS TECHNOLOGY (S) PTE LTD' : 'MAERSK SINGAPORE PTE LTD';
 const INVOICE_PREFIX = WORKSPACE === 'nonmaersk' ? 'EINV' : 'MINV';
 function nextInvoiceSeqForMonth(yyyymm){
   let max = 0;
@@ -711,8 +712,12 @@ async function autoAssignInvoiceNumbers(){
   ungrouped.forEach(j=>{
     const [y,m] = j.date.split('-');
     const yyyymm = y+m;
-    const isMaersk = (j.company||'').trim().toUpperCase() === MAERSK_MONTHLY_COMPANY;
-    const key = isMaersk ? `${j.company}|${yyyymm}` : `${j.company}|${j.date}`;
+    const isMonthly = (j.company||'').trim().toUpperCase() === MAERSK_MONTHLY_COMPANY;
+    // ELITE: every other company gets one invoice per job (not grouped by date).
+    // MAERSK: every other company still gets one invoice per date.
+    const key = isMonthly ? `${j.company}|${yyyymm}`
+      : WORKSPACE === 'nonmaersk' ? `${j.company}|${j.date}|${j.id}`
+      : `${j.company}|${j.date}`;
     groups[key] = groups[key] || {jobs:[], yyyymm};
     groups[key].jobs.push(j);
   });

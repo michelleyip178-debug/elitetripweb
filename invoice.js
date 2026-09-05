@@ -88,10 +88,11 @@ async function init(){
     return;
   }
 
-  const [jobsRes, clientsRes, driversRes] = await Promise.all([
+  const [jobsRes, clientsRes, driversRes, invoiceMetaRes] = await Promise.all([
     sb.from(TBL.jobs).select('*').in('invoice', invoiceNumbers),
     sb.from(TBL.clients).select('*'),
     sb.from(TBL.drivers).select('*'),
+    sb.from(TBL.invoice_meta).select('*').in('invoice', invoiceNumbers),
   ]);
   if(jobsRes.error || clientsRes.error || driversRes.error){
     preview.innerHTML = `<div class="invoice-empty">Failed to load invoice data: ${escHtml((jobsRes.error||clientsRes.error||driversRes.error).message)}</div>`;
@@ -100,6 +101,11 @@ async function init(){
   const jobs = jobsRes.data;
   const clients = clientsRes.data;
   const drivers = driversRes.data;
+  // Date Sent / Due Date set on the Invoice Tracking dashboard (invoice_meta)
+  // take priority over the dates computed from the underlying jobs, so
+  // editing them there is reflected here.
+  const invoiceMeta = invoiceMetaRes.error ? [] : invoiceMetaRes.data;
+  const metaFor = inv => invoiceMeta.find(m=>m.invoice===inv);
   if(!jobs.length){
     preview.innerHTML = '<div class="invoice-empty">No job records found for the selected invoice number(s).</div>';
     return;
@@ -123,9 +129,11 @@ async function init(){
 
     const company = invJobs[0].company || '';
     const client = findBillingClient(company);
+    const meta = metaFor(inv);
     const dates = invJobs.map(j=>j.date).filter(Boolean);
-    const invDate = dates.length ? dates.reduce((a,b)=>a<b?a:b) : '';
-    const dueDateDMY = invDate ? addDaysDMY(invDate, 30) : '';
+    const computedInvDate = dates.length ? dates.reduce((a,b)=>a<b?a:b) : '';
+    const invDate = meta?.dateSent || computedInvDate;
+    const dueDateDMY = meta?.dueDate ? toDMY(meta.dueDate) : (invDate ? addDaysDMY(invDate, 30) : '');
 
     let subtotal = 0;
     const rows = invJobs.map(j=>{
@@ -174,7 +182,7 @@ async function init(){
         <div class="invoice-meta">
           <table>
             <tr><td class="mlabel">INVOICE</td><td class="mval">${escHtml(inv)}</td></tr>
-            <tr><td class="mlabel">DATE</td><td class="mval">${escHtml(invDate ? toDMY(invDate) : '')}</td></tr>
+            <tr><td class="mlabel">DATE</td><td class="mval"><input type="text" class="invoice-date-input" value="${escHtml(invDate ? toDMY(invDate) : '')}"></td></tr>
             <tr><td class="mlabel">DUE DATE</td><td class="mval">${escHtml(dueDateDMY)}</td></tr>
           </table>
         </div>
