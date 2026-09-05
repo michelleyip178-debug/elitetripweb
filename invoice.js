@@ -158,7 +158,7 @@ async function init(){
         <td class="num">${Number(j.unitCost||0).toFixed(2)}</td>
         <td class="num">${Number(cost).toFixed(2)}</td>
       </tr>${addonRows}`;
-    }).join('') + (creditCardTotal > 0 ? `<tr><td></td><td>CREDIT CARD ADDITIONAL CHARGES 10%</td><td></td><td class="num">1</td><td class="num">${fmtMoney(creditCardTotal)}</td><td class="num">${fmtMoney(creditCardTotal)}</td></tr>` : '');
+    }).join('') + (creditCardTotal > 0 ? `<tr><td></td><td>CREDIT CARD CHARGES</td><td>CREDIT CARD ADDITIONAL CHARGES 10%</td><td class="num">1</td><td class="num">${fmtMoney(creditCardTotal)}</td><td class="num">${fmtMoney(creditCardTotal)}</td></tr>` : '');
 
     const billToLines = [company];
     if(client?.billingAddress) billToLines.push(client.billingAddress);
