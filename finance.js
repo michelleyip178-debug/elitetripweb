@@ -164,14 +164,23 @@ function populateFinCategoryFilter(){
     + all.map(c=>`<option value="${c}">${c}</option>`).join('')
     + '<option value="__uncategorized__">Uncategorized</option>';
 }
+let finFiltersDefaulted = false;
 function populateFinDateFilters(){
   const fYear = document.getElementById('fFinYear');
   const fMonth = document.getElementById('fFinMonth');
-  if(fYear.options.length>1) return;
   const currentYear = String(new Date().getFullYear());
-  const years = [...new Set([...FINANCE.transactions.map(t=>t.date).filter(Boolean).map(d=>d.slice(0,4)), currentYear])].sort();
-  years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
-  MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;fMonth.appendChild(o);});
+  if(fYear.options.length<=1){
+    const years = [...new Set([...FINANCE.transactions.map(t=>t.date).filter(Boolean).map(d=>d.slice(0,4)), currentYear])].sort();
+    years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fYear.appendChild(o);});
+    MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i+1).padStart(2,'0');o.textContent=m;fMonth.appendChild(o);});
+  }
+  // Default the view to the current real-world month, once per page load —
+  // not the latest month with data, so it doesn't get stuck on an old month.
+  if(!finFiltersDefaulted){
+    fYear.value = currentYear;
+    fMonth.value = String(new Date().getMonth()+1).padStart(2,'0');
+    finFiltersDefaulted = true;
+  }
 }
 document.getElementById('fFinYear').addEventListener('change', renderFinance);
 document.getElementById('fFinMonth').addEventListener('change', renderFinance);
