@@ -97,7 +97,6 @@ function accountName(id){ return FINANCE.accounts.find(a=>a.id===id)?.name || 'â
 sortState.finance = null;
 const FINANCE_SORT_ACCESSORS = {
   date: t=>t.date||'',
-  account: t=>accountName(t.accountId),
   type: t=>t.type||'',
   category: t=>t.category||'',
   amount: t=>Number(t.amount)||0,
@@ -133,19 +132,16 @@ function renderFinance(){
   document.querySelector('#financeTransactionsTable tbody').innerHTML = rows.length ? rows.map(t=>{
     const typeLabel = t.type.charAt(0).toUpperCase()+t.type.slice(1);
     const pillClass = t.type==='income' ? 'paid' : t.type==='expense' ? 'unpaid' : 'pending';
-    const accountLabel = t.type==='transfer' ? `${accountName(t.accountId)} â†’ ${accountName(t.transferToAccountId)}` : accountName(t.accountId);
     return `
     <tr>
       <td>${fmtDate(t.date)}</td>
-      <td>${escHtml(accountLabel)}</td>
       <td><span class="pill ${pillClass}">${typeLabel}</span></td>
       <td>${escHtml(t.category||'')}</td>
-      <td>${escHtml(t.description||'')}</td>
+      <td>${escHtml(t.description||'')}${t.source==='invoice' ? ` <span class="small muted">(Invoice ${escHtml(t.invoice||'')})</span>` : ''}</td>
       <td class="num">${fmtMoney(t.amount)}</td>
-      <td>${t.source==='invoice' ? `<span class="small muted">Invoice ${escHtml(t.invoice||'')}</span>` : '<span class="small muted">Manual</span>'}</td>
       <td class="row-actions">${t.source==='invoice' ? '' : `<button onclick="openFinTxnModal(${t.id})">Edit</button>`}</td>
     </tr>`;
-  }).join('') : `<tr><td colspan="8" class="empty">No transactions match these filters</td></tr>`;
+  }).join('') : `<tr><td colspan="6" class="empty">No transactions match these filters</td></tr>`;
 
   renderBalanceSheet();
 }
