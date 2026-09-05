@@ -13,9 +13,7 @@
 let FINANCE = { accounts: [], transactions: [], liabilities: [] };
 const DEFAULT_ACCOUNT_NAME = 'Operating Account';
 const FINANCE_CATEGORIES = [
-  'Trip Revenue','Other Income','Driver Payout','Fuel','Maintenance & Repairs',
-  'Insurance','Road Tax & Parking','Salary','Rental','Utilities','Office & Admin',
-  'Marketing','Miscellaneous',
+  'Trip Revenue','Driver Payout','Bank Fees','Other Income','Office & Admin','Miscellaneous',
 ];
 
 async function loadFinanceData(){
