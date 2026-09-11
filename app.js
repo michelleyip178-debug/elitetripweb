@@ -261,16 +261,38 @@ function statusClass(s){
 }
 
 // ---------- Nav ----------
+// DATA is only fetched once on load; switching tabs used to just re-render
+// that same in-memory snapshot, so edits made elsewhere (another staff
+// member, another browser tab) never showed up until a hard page reload.
+// Guard against clobbering an in-progress edit by skipping the refetch
+// while any modal is open.
+function anyModalOpen(){
+  return !!document.querySelector('.modal-bg.active');
+}
+async function refreshData(){
+  if(anyModalOpen()) return;
+  try{
+    DATA = await loadData();
+    renderAll();
+  }catch(e){
+    console.error('Refresh failed:', e);
+  }
+}
 document.querySelectorAll('nav button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('view-'+btn.dataset.view).classList.add('active');
-    renderAll();
+    refreshData();
     const active = document.querySelector('nav button.active');
     if(active) history.replaceState(null, '', `?ws=${WORKSPACE}&view=${active.dataset.view}`);
   });
+});
+// Re-fetch when the user comes back to this browser tab after switching
+// away, so stale data isn't left sitting on screen.
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible') refreshData();
 });
 
 // ---------- Workspace toggle ----------
