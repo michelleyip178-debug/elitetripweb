@@ -276,6 +276,8 @@ async function refreshData(){
   try{
     DATA = await loadData();
     renderAll();
+    // finance.js defines this if loaded — kept optional so app.js doesn't hard-depend on it.
+    if(typeof initFinance === 'function') await initFinance();
   }catch(e){
     console.error('Refresh failed:', e);
   }
