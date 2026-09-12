@@ -1744,6 +1744,11 @@ document.getElementById('saveJobBtn').addEventListener('click', async ()=>{
   };
   if(WORKSPACE === 'nonmaersk') job.payoutAlan = Number(document.getElementById('f_payoutAlan').value)||0;
   if(!job.date){ alert('Please set a date.'); return; }
+  // MAERSK SINGAPORE PTE LTD + SG51 cost centre always gets invoice #1 of the
+  // month by default — no need to wait for a manual Auto-Assign click.
+  if(!job.invoice && isSg51MaerskJob(job)){
+    job.invoice = suggestInvoiceFor(job);
+  }
   if(job.invoice){
     const conflict = DATA.jobs.find(j =>
       j.invoice === job.invoice && j.id !== editingId &&
