@@ -708,6 +708,13 @@ document.getElementById('invSelectAll').addEventListener('change', e=>{
 // ELITE). Every other company gets one invoice per date.
 const MAERSK_MONTHLY_COMPANY = WORKSPACE === 'nonmaersk' ? 'MFS TECHNOLOGY (S) PTE LTD' : 'MAERSK SINGAPORE PTE LTD';
 const INVOICE_PREFIX = WORKSPACE === 'nonmaersk' ? 'EINV' : 'MINV';
+// MAERSK SINGAPORE PTE LTD trips billed under an SG51 cost centre always get
+// invoice #1 of the month, reserved ahead of every other invoice.
+function isSg51MaerskJob(j){
+  return WORKSPACE !== 'nonmaersk'
+    && (j.company||'').trim().toUpperCase() === 'MAERSK SINGAPORE PTE LTD'
+    && (j.costCentre||'').trim().toUpperCase().startsWith('SG51');
+}
 function nextInvoiceSeqForMonth(yyyymm){
   let max = 0;
   const re = new RegExp('^'+INVOICE_PREFIX+yyyymm+'(\\d{4})');
@@ -725,6 +732,10 @@ function suggestInvoiceFor(job){
   if(!job.date) return null;
   const [y,m] = job.date.split('-');
   const yyyymm = y+m;
+  if(isSg51MaerskJob(job)){
+    const existing = DATA.jobs.find(j=>j.invoice===`${INVOICE_PREFIX}${yyyymm}0001` && j.id!==job.id);
+    if(!existing || isSg51MaerskJob(existing)) return `${INVOICE_PREFIX}${yyyymm}0001`;
+  }
   const seq = nextInvoiceSeqForMonth(yyyymm);
   return `${INVOICE_PREFIX}${yyyymm}${String(seq).padStart(4,'0')}`;
 }
@@ -737,19 +748,31 @@ async function autoAssignInvoiceNumbers(){
     const [y,m] = j.date.split('-');
     const yyyymm = y+m;
     const isMonthly = (j.company||'').trim().toUpperCase() === MAERSK_MONTHLY_COMPANY;
+    const isPriority = isSg51MaerskJob(j);
+    // SG51-cost-centre MAERSK SINGAPORE PTE LTD trips always get invoice #1
+    // of the month, kept separate from the rest of that company's jobs.
     // ELITE: every other company gets one invoice per job (not grouped by date).
     // MAERSK: every other company still gets one invoice per date.
-    const key = isMonthly ? `${j.company}|${yyyymm}`
+    const key = isPriority ? `__SG51_PRIORITY__|${yyyymm}`
+      : isMonthly ? `${j.company}|${yyyymm}`
       : WORKSPACE === 'nonmaersk' ? `${j.company}|${j.date}|${j.id}`
       : `${j.company}|${j.date}`;
-    groups[key] = groups[key] || {jobs:[], yyyymm};
+    groups[key] = groups[key] || {jobs:[], yyyymm, priority:isPriority};
     groups[key].jobs.push(j);
   });
 
   const seqByMonth = {};
-  const assignments = Object.values(groups).map(g=>{
-    if(seqByMonth[g.yyyymm] == null) seqByMonth[g.yyyymm] = nextInvoiceSeqForMonth(g.yyyymm);
-    const seq = seqByMonth[g.yyyymm]++;
+  // Priority (SG51) groups are assigned first so they can safely claim #0001.
+  const groupList = Object.values(groups).sort((a,b)=>(b.priority?1:0)-(a.priority?1:0));
+  const assignments = groupList.map(g=>{
+    let seq;
+    if(g.priority && !DATA.jobs.some(j=>j.invoice===`${INVOICE_PREFIX}${g.yyyymm}0001`)){
+      seq = 1;
+      seqByMonth[g.yyyymm] = 2;
+    } else {
+      if(seqByMonth[g.yyyymm] == null) seqByMonth[g.yyyymm] = nextInvoiceSeqForMonth(g.yyyymm);
+      seq = seqByMonth[g.yyyymm]++;
+    }
     return { invNum: `${INVOICE_PREFIX}${g.yyyymm}${String(seq).padStart(4,'0')}`, jobs: g.jobs };
   });
 
