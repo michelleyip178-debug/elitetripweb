@@ -1623,6 +1623,9 @@ document.getElementById('f_unitCost').addEventListener('input', ()=>{ unitCostEd
 document.getElementById('f_jobType').addEventListener('change', ()=>{
   refreshVehicleField(document.getElementById('f_jobType').value);
   applyRateToUnitCost();
+  const jobType = document.getElementById('f_jobType').value;
+  const detailsEl = document.getElementById('f_details');
+  if(/^MIDNIGHT SURCHARGE/i.test(jobType||'') && !detailsEl.value) detailsEl.value = '0000 - 0600';
 });
 document.getElementById('f_vehicle').addEventListener('change', applyRateToUnitCost);
 
