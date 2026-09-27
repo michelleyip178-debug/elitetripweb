@@ -817,7 +817,7 @@ function renderTripDetailsCell(j){
 // parent job's Trip Details in that row — the stop's location, not the
 // whole trip, is what belongs there.
 function renderOptionDetailsCell(j, o){
-  if(/^ADDITIONAL STOP/i.test(o.optionType||'') && o.note){
+  if((/^ADDITIONAL STOP/i.test(o.optionType||'') || /^MIDNIGHT SURCHARGE/i.test(o.optionType||'')) && o.note){
     return `<div class="small" style="white-space:pre-line;">${escHtml(o.note)}</div>`;
   }
   return renderTripDetailsCell(j);
@@ -1438,6 +1438,10 @@ function sumExtrasExcluding(row){
 }
 function applyOptionRate(row){
   const optionType = row.querySelector('.optionType').value;
+  if(/^MIDNIGHT SURCHARGE/i.test(optionType||'')){
+    const noteEl = row.querySelector('.optionNote');
+    if(!noteEl.value) noteEl.value = '0000 - 0600';
+  }
   const map = getRateMapping(optionType);
   if(!map) return;
   if(map.flat != null){
@@ -1462,7 +1466,7 @@ function fmtOptionLabel(o){
 // MISCELLANEOUS and ADDITIONAL STOP (any variant) both take a free-text
 // description, since neither is specific enough on its own.
 function optionTypeNeedsNote(v){
-  return v === 'MISCELLANEOUS' || v === '杂项' || /^ADDITIONAL STOP/i.test(v||'');
+  return v === 'MISCELLANEOUS' || v === '杂项' || /^ADDITIONAL STOP/i.test(v||'') || /^MIDNIGHT SURCHARGE/i.test(v||'');
 }
 function updateOptionNoteVisibility(row){
   const noteEl = row.querySelector('.optionNote');
