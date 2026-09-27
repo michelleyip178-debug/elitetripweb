@@ -43,6 +43,12 @@ function addDaysDMY(dateStr, days){
   d.setDate(d.getDate()+days);
   return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`;
 }
+// Per-client payment terms override — default is 30 days. Kept in sync with
+// the same override in app.js (Invoice Tracking).
+const PAYMENT_TERMS_DAYS_OVERRIDE = { 'EASTOOL INDUSTRIES SDN BHD': 14 };
+function paymentTermsDaysFor(company){
+  return PAYMENT_TERMS_DAYS_OVERRIDE[(company||'').trim().toUpperCase()] ?? 30;
+}
 function extractRoute(text){
   if(!text) return '';
   return text.split('\n').filter(l=>!/^\s*(REQUESTOR|UID|COST CENTRE|DRIVER|PAX|TIME)\s*:/i.test(l)).join('\n').trim();
@@ -133,7 +139,7 @@ async function init(){
     const dates = invJobs.map(j=>j.date).filter(Boolean);
     const computedInvDate = dates.length ? dates.reduce((a,b)=>a<b?a:b) : '';
     const invDate = meta?.dateSent || computedInvDate;
-    const dueDateDMY = meta?.dueDate ? toDMY(meta.dueDate) : (invDate ? addDaysDMY(invDate, 30) : '');
+    const dueDateDMY = meta?.dueDate ? toDMY(meta.dueDate) : (invDate ? addDaysDMY(invDate, paymentTermsDaysFor(company)) : '');
 
     let subtotal = 0;
     let creditCardTotal = 0;

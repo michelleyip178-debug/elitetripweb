@@ -898,6 +898,11 @@ document.getElementById('generateReceiptBtn').addEventListener('click', async ()
 // ---------- Invoice Tracking (due date / payment date, one row per invoice #) ----------
 sortState.invoiceTracking = null;
 let trackFiltersDefaulted = false;
+// Per-client payment terms override — default is 30 (working) days.
+const PAYMENT_TERMS_DAYS_OVERRIDE = { 'EASTOOL INDUSTRIES SDN BHD': 14 };
+function paymentTermsDaysFor(company){
+  return PAYMENT_TERMS_DAYS_OVERRIDE[(company||'').trim().toUpperCase()] ?? 30;
+}
 // Adds working days only (skips Sat/Sun) — used for the due date, which counts
 // from when the invoice was actually sent, not from the job date.
 function addWorkingDaysISO(dateStr, days){
@@ -929,9 +934,10 @@ function groupInvoices(){
       : g.statuses.some(s=>statusClass(s)==='pending') ? 'PENDING' : 'PAID';
     const meta = (DATA.invoiceMeta||[]).find(m=>m.invoice===g.invoice);
     const dateSent = meta?.dateSent || '';
-    // Due date defaults to 30 working days from when the invoice was sent
+    // Due date defaults to N working days from when the invoice was sent
     // (blank until a Date Sent is recorded), unless manually overridden here.
-    const dueDate = meta?.dueDate || (dateSent ? addWorkingDaysISO(dateSent, 30) : '');
+    // N is normally 30, but some clients have their own payment terms.
+    const dueDate = meta?.dueDate || (dateSent ? addWorkingDaysISO(dateSent, paymentTermsDaysFor(g.company)) : '');
     return { ...g, status, dateSent, dueDate, paymentDate: meta?.paymentDate || '' };
   });
 }
