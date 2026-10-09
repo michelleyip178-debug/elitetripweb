@@ -1384,7 +1384,10 @@ function fillSelect(sel, values, placeholder){
 // types added via the Job Types & Rates tab (DATA.rates), so a newly added
 // rate shows up immediately without editing code.
 function allJobTypes(){
-  return [...new Set([...JOB_TYPES, ...DATA.rates.map(r=>r.jobType).filter(Boolean)])];
+  // MAERSK can bill credit card charges as a standalone job line (entered
+  // manually: qty 1 × amount), not only as an Additional Option on a job.
+  const workspaceExtras = WORKSPACE === 'nonmaersk' ? [] : ['CREDIT CARD CHARGES'];
+  return [...new Set([...JOB_TYPES, ...workspaceExtras, ...DATA.rates.map(r=>r.jobType).filter(Boolean)])];
 }
 function hasChineseText(s){
   return /[一-鿿]/.test(s||'');
