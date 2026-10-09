@@ -803,6 +803,10 @@ function extractPax(text){
 // ELITE jobs don't carry Host/UID/Cost Centre, so their Trip Details cell just
 // shows Itinerary, PAX, and Driver instead of the full MAERSK-style detail block.
 function renderTripDetailsCell(j){
+  // A credit card charge isn't a trip — show just the fee label.
+  if((j.jobType||'').trim().toUpperCase() === 'CREDIT CARD CHARGES'){
+    return `<div class="small">${escHtml(extractRoute(j.details) || 'CREDIT CARD CHARGES (10%)')}</div>`;
+  }
   if(WORKSPACE === 'nonmaersk'){
     const itinerary = extractRoute(j.details);
     const pax = extractPax(j.details);
@@ -1694,6 +1698,7 @@ document.getElementById('cancelJobBtn').addEventListener('click', closeJobModal)
 document.getElementById('jobModalBg').addEventListener('click', (e)=>{ if(e.target.id==='jobModalBg') closeJobModal(); });
 
 function buildTripDetails({hostName, uid, costCentre, pax, itinerary, driver, startTime, endTime, jobType}){
+  if((jobType||'').trim().toUpperCase() === 'CREDIT CARD CHARGES') return itinerary || 'CREDIT CARD CHARGES (10%)';
   const lines = [];
   lines.push(`REQUESTOR: ${hostName||''}`);
   lines.push(`UID: ${uid||''}`);
