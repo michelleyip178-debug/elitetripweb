@@ -51,6 +51,10 @@ function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').r
 
 // Same line-item description logic as buildItemDescription() in app.js.
 function buildItemDescription(job, drivers){
+  // A credit card charge isn't a trip — just the fee label, no requestor/driver block.
+  if((job.jobType||'').trim().toUpperCase() === 'CREDIT CARD CHARGES'){
+    return extractRoute(job.details) || 'CREDIT CARD CHARGES (10%)';
+  }
   const lines = [];
   if(WORKSPACE !== 'nonmaersk'){
     if(job.hostName) lines.push(`REQUESTOR: ${job.hostName}`);
@@ -145,7 +149,7 @@ async function init(){
         <td class="num">${Number(j.unitCost||0).toFixed(2)}</td>
         <td class="num">${Number(cost).toFixed(2)}</td>
       </tr>${addonRows}`;
-    }).join('') + (creditCardTotal > 0 ? `<tr><td></td><td>CREDIT CARD CHARGES</td><td>CREDIT CARD ADDITIONAL CHARGES 10%</td><td class="num">1</td><td class="num">${fmtMoney(creditCardTotal)}</td><td class="num">${fmtMoney(creditCardTotal)}</td></tr>` : '');
+    }).join('') + (creditCardTotal > 0 ? `<tr><td></td><td>CREDIT CARD CHARGES</td><td>CREDIT CARD CHARGES (10%)</td><td class="num">1</td><td class="num">${fmtMoney(creditCardTotal)}</td><td class="num">${fmtMoney(creditCardTotal)}</td></tr>` : '');
 
     const billToLines = [company ? company : hostName];
     if(company && hostName) billToLines.push(hostName);
