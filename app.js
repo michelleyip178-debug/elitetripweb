@@ -1744,7 +1744,7 @@ document.getElementById('saveJobBtn').addEventListener('click', async ()=>{
   const endTime = document.getElementById('f_end').value;
   const job = {
     date: getDate('f_date'),
-    invoice: document.getElementById('f_invoice').value,
+    invoice: document.getElementById('f_invoice').value.trim(),
     driver,
     jobType: document.getElementById('f_jobType').value,
     vehicle: document.getElementById('f_vehicle').value,
