@@ -1629,6 +1629,7 @@ document.getElementById('f_jobType').addEventListener('change', ()=>{
   const jobType = document.getElementById('f_jobType').value;
   const detailsEl = document.getElementById('f_details');
   if(/^MIDNIGHT SURCHARGE/i.test(jobType||'') && !detailsEl.value) detailsEl.value = '0000 - 0600';
+  if((jobType||'').toUpperCase() === 'CREDIT CARD CHARGES' && !detailsEl.value) detailsEl.value = 'CREDIT CARD CHARGES (10%)';
 });
 document.getElementById('f_vehicle').addEventListener('change', applyRateToUnitCost);
 
