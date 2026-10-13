@@ -159,10 +159,13 @@ function renderInvoices({invoiceNumbers, jobs, clients, drivers, invoiceMeta, jo
   const metaFor = inv => invoiceMeta.find(m=>m.invoice===inv);
   const optionsByJob = jobId => jobOptions.filter(o=>o.job_id===jobId);
 
-  function findBillingClient(company){
-    if(!company) return null;
-    const norm = company.trim().toUpperCase();
-    const matches = clients.filter(c=>(c.company||'').trim().toUpperCase()===norm);
+  // Billing details come from the client's company; when a job has no company,
+  // fall back to matching the host name instead.
+  function findBillingClient(company, hostName){
+    const key = (company||'').trim() ? 'company' : 'hostName';
+    const norm = ((company||'').trim() || (hostName||'').trim()).toUpperCase();
+    if(!norm) return null;
+    const matches = clients.filter(c=>(c[key]||'').trim().toUpperCase()===norm);
     return matches.find(c=>c.billingAddress) || matches[0] || null;
   }
 
@@ -171,7 +174,7 @@ function renderInvoices({invoiceNumbers, jobs, clients, drivers, invoiceMeta, jo
     if(!invJobs.length) return `<div class="invoice-doc"><div class="invoice-empty">No records found for invoice ${escHtml(inv)}.</div></div>`;
 
     const company = invJobs[0].company || '';
-    const client = findBillingClient(company);
+    const client = findBillingClient(company, invJobs[0].hostName);
     const meta = metaFor(inv);
     const dates = invJobs.map(j=>j.date).filter(Boolean);
     const computedInvDate = dates.length ? dates.reduce((a,b)=>a<b?a:b) : '';
@@ -203,7 +206,7 @@ function renderInvoices({invoiceNumbers, jobs, clients, drivers, invoiceMeta, jo
       </tr>${addonRows}`;
     }).join('') + (creditCardTotal > 0 ? `<tr><td></td><td>CREDIT CARD CHARGES</td><td>CREDIT CARD CHARGES (10%)</td><td class="num">1</td><td class="num">${fmtMoney(creditCardTotal)}</td><td class="num">${fmtMoney(creditCardTotal)}</td></tr>` : '');
 
-    const billToLines = [company];
+    const billToLines = [company || invJobs[0].hostName || ''];
     if(client?.billingAddress) billToLines.push(client.billingAddress);
     if(client?.uen) billToLines.push(`UEN: ${client.uen}`);
 

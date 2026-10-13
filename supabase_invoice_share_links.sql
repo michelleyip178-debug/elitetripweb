@@ -25,6 +25,7 @@ declare
   sfx text := case when p_ws = 'nonmaersk' then '_nonmaersk' else '' end;
   v_inv text;
   v_company text;
+  v_host text;
   result json;
 begin
   -- Tokens are 64 hex chars; reject anything short so a guess can't match.
@@ -38,8 +39,8 @@ begin
     return null;
   end if;
 
-  execute format('select company from %I where invoice = $1 order by date, id limit 1', 'jobs' || sfx)
-    into v_company using v_inv;
+  execute format('select company, "hostName" from %I where invoice = $1 order by date, id limit 1', 'jobs' || sfx)
+    into v_company, v_host using v_inv;
 
   execute format($f$
     select json_build_object(
@@ -61,10 +62,15 @@ begin
                 from %4$I d where d.name in (select driver from %2$I where invoice = $1)), '[]'::json),
       'clients', coalesce((select json_agg(json_build_object(
                   'company', c.company, 'billingAddress', c."billingAddress", 'uen', c.uen))
-                from %5$I c where upper(trim(c.company)) = upper(trim($2))), '[]'::json)
+                from %5$I c
+                where case when trim(coalesce($2, '')) <> ''
+                           then upper(trim(c.company)) = upper(trim($2))
+                           else trim(coalesce($3, '')) <> ''
+                                and upper(trim(c."hostName")) = upper(trim($3))
+                      end), '[]'::json)
     )$f$,
     'invoice_meta' || sfx, 'jobs' || sfx, 'job_options' || sfx, 'drivers' || sfx, 'clients' || sfx)
-  into result using v_inv, v_company;
+  into result using v_inv, v_company, v_host;
 
   return result;
 end;
