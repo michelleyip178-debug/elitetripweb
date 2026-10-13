@@ -23,6 +23,10 @@ if(WORKSPACE === 'nonmaersk'){
   const costHint = document.getElementById('costHint');
   if(costHint) costHint.textContent = 'Qty × Unit Cost + Additional Options';
 }
+if(WORKSPACE === 'nonmaersk'){
+  const coyHint = document.getElementById('coyFundHint');
+  if(coyHint) coyHint.textContent = 'Defaults to Total Cost − Driver Payout − Payout to Alan; editable to override';
+}
 // .payoutAlan-col (th and dynamically-rendered td cells alike) is hidden by
 // default in CSS and only shown for ELITE via this body class.
 if(WORKSPACE === 'nonmaersk') document.body.classList.add('ws-nonmaersk');
@@ -1571,7 +1575,9 @@ function recalc(){
       const payoutAlan = document.getElementById('f_payoutAlan').value;
       document.getElementById('f_coyFund').value = payoutAlan === '' ? '' : (Number(payoutAlan)||0).toFixed(2);
     } else {
-      document.getElementById('f_coyFund').value = cost ? (cost - payout).toFixed(2) : '';
+      // ELITE: Payout to Alan also comes out of the company's share.
+      const alan = WORKSPACE === 'nonmaersk' ? (Number(document.getElementById('f_payoutAlan').value)||0) : 0;
+      document.getElementById('f_coyFund').value = cost ? (cost - payout - alan).toFixed(2) : '';
     }
   }
 }
