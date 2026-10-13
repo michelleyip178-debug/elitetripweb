@@ -26,9 +26,18 @@ loginPassword.addEventListener('keydown', e=>{ if(e.key==='Enter') loginBtn.clic
 
 document.getElementById('printBtn').addEventListener('click', ()=>window.print());
 
-sb.auth.getSession().then(({data:{session}})=>{
-  if(session){ init(); } else { loginOverlay.classList.remove('hidden'); }
-});
+// ?t=<token> means a customer opened a public share link: view-only, no login.
+const SHARE_TOKEN = new URLSearchParams(location.search).get('t');
+const IS_SHARED_VIEW = !!SHARE_TOKEN;
+
+if(IS_SHARED_VIEW){
+  document.body.classList.add('shared-view');
+  initShared();
+} else {
+  sb.auth.getSession().then(({data:{session}})=>{
+    if(session){ init(); } else { loginOverlay.classList.remove('hidden'); }
+  });
+}
 
 // ---------- Formatting helpers (ported from app.js — pages here are self-contained) ----------
 function fmtMoney(n){ n = Number(n)||0; return 'S$' + n.toLocaleString('en-SG', {minimumFractionDigits:2, maximumFractionDigits:2}); }
@@ -111,11 +120,7 @@ async function init(){
   const jobs = jobsRes.data;
   const clients = clientsRes.data;
   const drivers = driversRes.data;
-  // Date Sent / Due Date set on the Invoice Tracking dashboard (invoice_meta)
-  // take priority over the dates computed from the underlying jobs, so
-  // editing them there is reflected here.
   const invoiceMeta = invoiceMetaRes.error ? [] : invoiceMetaRes.data;
-  const metaFor = inv => invoiceMeta.find(m=>m.invoice===inv);
   if(!jobs.length){
     preview.innerHTML = '<div class="invoice-empty">No job records found for the selected invoice number(s).</div>';
     return;
@@ -124,6 +129,34 @@ async function init(){
   const jobIds = jobs.map(j=>j.id);
   const optionsRes = await sb.from(TBL.job_options).select('*').in('job_id', jobIds);
   const jobOptions = optionsRes.error ? [] : optionsRes.data;
+  renderInvoices({invoiceNumbers, jobs, clients, drivers, invoiceMeta, jobOptions});
+}
+
+// Public, view-only link for customers: ?t=<shareToken>. No login — the only
+// data access is the get_shared_invoice() database function, which returns
+// just this one invoice's customer-facing data.
+async function initShared(){
+  loginOverlay.classList.add('hidden');
+  const {data, error} = await sb.rpc('get_shared_invoice', {p_token: SHARE_TOKEN, p_ws: WORKSPACE});
+  if(error || !data){
+    preview.innerHTML = '<div class="invoice-empty">This invoice link is invalid or is no longer available.</div>';
+    return;
+  }
+  renderInvoices({
+    invoiceNumbers: [data.invoice],
+    jobs: data.jobs,
+    clients: data.clients,
+    drivers: data.drivers,
+    invoiceMeta: data.meta ? [{invoice: data.invoice, ...data.meta}] : [],
+    jobOptions: data.options,
+  });
+}
+
+function renderInvoices({invoiceNumbers, jobs, clients, drivers, invoiceMeta, jobOptions}){
+  // Date Sent / Due Date set on the Invoice Tracking dashboard (invoice_meta)
+  // take priority over the dates computed from the underlying jobs, so
+  // editing them there is reflected here.
+  const metaFor = inv => invoiceMeta.find(m=>m.invoice===inv);
   const optionsByJob = jobId => jobOptions.filter(o=>o.job_id===jobId);
 
   function findBillingClient(company){
@@ -199,7 +232,7 @@ async function init(){
         <div class="invoice-meta">
           <table>
             <tr><td class="mlabel">INVOICE</td><td class="mval">${escHtml(inv)}</td></tr>
-            <tr><td class="mlabel">DATE</td><td class="mval"><input type="text" class="invoice-date-input" value="${escHtml(invDate ? toDMY(invDate) : '')}"></td></tr>
+            <tr><td class="mlabel">DATE</td><td class="mval">${IS_SHARED_VIEW ? escHtml(invDate ? toDMY(invDate) : '') : `<input type="text" class="invoice-date-input" value="${escHtml(invDate ? toDMY(invDate) : '')}">`}</td></tr>
             <tr><td class="mlabel">DUE DATE</td><td class="mval">${escHtml(dueDateDMY)}</td></tr>
           </table>
         </div>

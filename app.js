@@ -942,7 +942,7 @@ function groupInvoices(){
     // (blank until a Date Sent is recorded), unless manually overridden here.
     // N is normally 30, but some clients have their own payment terms.
     const dueDate = meta?.dueDate || (dateSent ? addWorkingDaysISO(dateSent, paymentTermsDaysFor(g.company)) : '');
-    return { ...g, status, dateSent, dueDate, paymentDate: meta?.paymentDate || '' };
+    return { ...g, status, dateSent, dueDate, paymentDate: meta?.paymentDate || '', shareToken: meta?.shareToken || '' };
   });
 }
 function populateTrackFilterOptions(rows){
@@ -1029,6 +1029,8 @@ function renderInvoiceTracking(){
       <td><input type="date" class="trackPaymentDate" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.paymentDate||''}"></td>
       <td class="row-actions">
         <button onclick="window.open('invoice.html?${new URLSearchParams({ws:WORKSPACE,inv:r.invoice})}','_blank')">View Invoice</button>
+        <button class="copyShareLink" data-invoice="${r.invoice.replace(/"/g,'&quot;')}">Copy Link</button>
+        ${r.shareToken ? `<button class="revokeShareLink del" data-invoice="${r.invoice.replace(/"/g,'&quot;')}">Revoke Link</button>` : ''}
         ${r.salesReceipt ? `<button onclick="window.open('receipt.html?${new URLSearchParams({ws:WORKSPACE,rcpt:r.salesReceipt})}','_blank')">View Receipt</button>` : ''}
       </td>
     </tr>`;
@@ -1081,6 +1083,41 @@ document.querySelector('#invoiceTrackingTable tbody').addEventListener('change',
     if(e.target.checked) selectedTrackInvoices.add(inv); else selectedTrackInvoices.delete(inv);
     document.getElementById('trackSelectAll').checked = [...document.querySelectorAll('.track-check')].every(c=>c.checked);
     updateTrackMarkPaidBtnLabel();
+  }
+});
+// Public, view-only customer links: a random token stored on invoice_meta,
+// opened as invoice.html?ws=...&t=<token> (see get_shared_invoice() in
+// supabase_invoice_share_links.sql). Revoking clears the token.
+function shareUrlFor(token){
+  const url = new URL('invoice.html', location.href);
+  url.search = new URLSearchParams({ws:WORKSPACE, t:token}).toString();
+  return url.href;
+}
+document.querySelector('#invoiceTrackingTable tbody').addEventListener('click', async (e)=>{
+  const copyBtn = e.target.closest('.copyShareLink');
+  const revokeBtn = e.target.closest('.revokeShareLink');
+  const findMeta = inv => (DATA.invoiceMeta||[]).find(m=>m.invoice===inv);
+  if(copyBtn){
+    const invoice = copyBtn.dataset.invoice;
+    let token = findMeta(invoice)?.shareToken;
+    if(!token){
+      token = crypto.randomUUID().replace(/-/g,'') + crypto.randomUUID().replace(/-/g,'');
+      await upsertInvoiceMeta(invoice, {shareToken: token});
+      if(findMeta(invoice)?.shareToken !== token) return; // save failed — error already shown
+      renderInvoiceTracking();
+    }
+    const url = shareUrlFor(token);
+    try{
+      await navigator.clipboard.writeText(url);
+      alert('Customer link copied. Anyone with this link can view this invoice (view only).');
+    }catch(err){
+      prompt('Copy this customer link:', url);
+    }
+  } else if(revokeBtn){
+    const invoice = revokeBtn.dataset.invoice;
+    if(!confirm(`Revoke the customer link for ${invoice}? The old link will stop working.`)) return;
+    await upsertInvoiceMeta(invoice, {shareToken: null});
+    renderInvoiceTracking();
   }
 });
 document.getElementById('trackSelectAll').addEventListener('change', e=>{
