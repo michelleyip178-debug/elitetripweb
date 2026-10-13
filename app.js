@@ -466,6 +466,8 @@ const INVOICES_SORT_ACCESSORS = {
   qty: j=>Number(j.qty)||0,
   unitCost: j=>Number(j.unitCost)||0,
   cost: j=>(Number(j.qty)||0)*(Number(j.unitCost)||0),
+  driverPayout: j=>Number(j.driverPayout)||0,
+  coyFund: j=>Number(j.coyFund)||0,
   payoutAlan: j=>Number(j.payoutAlan)||0,
   paymentStatus: j=>j.paymentStatus||'',
 };
@@ -657,6 +659,8 @@ function renderInvoices(_skipFit){
       <td class="num">${j.qty ?? ''}</td>
       <td class="num">${fmtMoney(j.unitCost)}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
+      <td class="num fit-col">${fmtMoney(j.driverPayout)}</td>
+      <td class="num fit-col">${fmtMoney(j.coyFund)}</td>
       <td class="num payoutAlan-col fit-col">${fmtMoney(j.payoutAlan)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
@@ -673,11 +677,13 @@ function renderInvoices(_skipFit){
       <td class="num">1</td>
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
+      <td class="num fit-col"></td>
+      <td class="num fit-col"></td>
       <td class="num payoutAlan-col fit-col"></td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>`).join('')}`;
-  }).join('') : `<tr><td colspan="13" class="empty">No records found</td></tr>`;
+  }).join('') : `<tr><td colspan="15" class="empty">No records found</td></tr>`;
   renderPagination('invoicesPagination', 'invoices', page, totalPages, renderInvoices);
   const checkable = [...document.querySelectorAll('.inv-check')];
   document.getElementById('invSelectAll').checked = checkable.length>0 && checkable.every(c=>c.checked);
