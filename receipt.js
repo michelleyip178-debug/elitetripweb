@@ -109,8 +109,14 @@ async function init(){
   const jobOptions = optionsRes.error ? [] : optionsRes.data;
   const optionsByJob = jobId => jobOptions.filter(o=>o.job_id===jobId);
 
-  function findBillingClient(company){
-    if(!company) return null;
+  // "NA"/blank means an individual client with no company — bill them by name.
+  const isRealCompany = c => !!(c||'').trim() && !/^(NA|N\/A)$/i.test((c||'').trim());
+  function findBillingClient(company, hostName){
+    if(!isRealCompany(company)){
+      const h = (hostName||'').trim().toUpperCase();
+      if(!h) return null;
+      return clients.find(c=>(c.hostName||'').trim().toUpperCase()===h) || null;
+    }
     const norm = company.trim().toUpperCase();
     const matches = clients.filter(c=>(c.company||'').trim().toUpperCase()===norm);
     return matches.find(c=>c.billingAddress) || matches[0] || null;
@@ -122,7 +128,7 @@ async function init(){
 
     const company = rcptJobs[0].company || '';
     const hostName = rcptJobs[0].hostName || '';
-    const client = findBillingClient(company);
+    const client = findBillingClient(company, hostName);
     const dates = rcptJobs.map(j=>j.date).filter(Boolean);
     const rcptDate = dates.length ? dates.reduce((a,b)=>a>b?a:b) : '';
 
@@ -151,8 +157,8 @@ async function init(){
       </tr>${addonRows}`;
     }).join('') + (creditCardTotal > 0 ? `<tr><td></td><td>CREDIT CARD CHARGES</td><td>CREDIT CARD CHARGES (10%)</td><td class="num">1</td><td class="num">${fmtMoney(creditCardTotal)}</td><td class="num">${fmtMoney(creditCardTotal)}</td></tr>` : '');
 
-    const billToLines = [company ? company : hostName];
-    if(company && hostName) billToLines.push(hostName);
+    const billToLines = [isRealCompany(company) ? company : hostName];
+    if(isRealCompany(company) && hostName) billToLines.push(hostName);
     if(client?.billingAddress) billToLines.push(client.billingAddress);
     if(client?.uen) billToLines.push(`UEN: ${client.uen}`);
 
