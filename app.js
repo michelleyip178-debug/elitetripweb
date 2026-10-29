@@ -23,6 +23,10 @@ if(WORKSPACE === 'nonmaersk'){
   const costHint = document.getElementById('costHint');
   if(costHint) costHint.textContent = 'Qty × Unit Cost + Additional Options';
 }
+if(WORKSPACE === 'nonmaersk'){
+  const coyHint = document.getElementById('coyFundHint');
+  if(coyHint) coyHint.textContent = 'Defaults to Total Cost − Driver Payout − Payout to Alan; editable to override';
+}
 // .payoutAlan-col (th and dynamically-rendered td cells alike) is hidden by
 // default in CSS and only shown for ELITE via this body class.
 if(WORKSPACE === 'nonmaersk') document.body.classList.add('ws-nonmaersk');
@@ -462,6 +466,8 @@ const INVOICES_SORT_ACCESSORS = {
   qty: j=>Number(j.qty)||0,
   unitCost: j=>Number(j.unitCost)||0,
   cost: j=>(Number(j.qty)||0)*(Number(j.unitCost)||0),
+  driverPayout: j=>Number(j.driverPayout)||0,
+  coyFund: j=>Number(j.coyFund)||0,
   payoutAlan: j=>Number(j.payoutAlan)||0,
   paymentStatus: j=>j.paymentStatus||'',
 };
@@ -519,7 +525,7 @@ function renderJobs(_skipFit){
       <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${renderTripDetailsCell(j)}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
-      <td class="num">${fmtMoney(j.driverPayout)}</td>
+      <td class="num fit-col">${fmtMoney(j.driverPayout)}</td>
       <td class="num fit-col">${fmtMoney(j.coyFund)}</td>
       <td class="num payoutAlan-col fit-col">${fmtMoney(j.payoutAlan)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
@@ -536,7 +542,7 @@ function renderJobs(_skipFit){
       <td class="host-cell">${j.hostName||''}${j.company?`<div class="small muted">${j.company}</div>`:''}</td>
       <td class="details-cell">${renderOptionDetailsCell(j, o)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
-      <td class="num">${fmtMoney(j.driverPayout)}</td>
+      <td class="num fit-col">${fmtMoney(j.driverPayout)}</td>
       <td class="num fit-col">${fmtMoney(j.coyFund)}</td>
       <td class="num payoutAlan-col fit-col">${fmtMoney(j.payoutAlan)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
@@ -653,6 +659,8 @@ function renderInvoices(_skipFit){
       <td class="num">${j.qty ?? ''}</td>
       <td class="num">${fmtMoney(j.unitCost)}</td>
       <td class="num">${fmtMoney((Number(j.qty)||0)*(Number(j.unitCost)||0))}</td>
+      <td class="num fit-col">${fmtMoney(j.driverPayout)}</td>
+      <td class="num fit-col">${fmtMoney(j.coyFund)}</td>
       <td class="num payoutAlan-col fit-col">${fmtMoney(j.payoutAlan)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
@@ -669,11 +677,13 @@ function renderInvoices(_skipFit){
       <td class="num">1</td>
       <td class="num">${fmtMoney(o.amount)}</td>
       <td class="num">${fmtMoney(o.amount)}</td>
+      <td class="num fit-col"></td>
+      <td class="num fit-col"></td>
       <td class="num payoutAlan-col fit-col"></td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>`).join('')}`;
-  }).join('') : `<tr><td colspan="13" class="empty">No records found</td></tr>`;
+  }).join('') : `<tr><td colspan="15" class="empty">No records found</td></tr>`;
   renderPagination('invoicesPagination', 'invoices', page, totalPages, renderInvoices);
   const checkable = [...document.querySelectorAll('.inv-check')];
   document.getElementById('invSelectAll').checked = checkable.length>0 && checkable.every(c=>c.checked);
@@ -942,7 +952,7 @@ function groupInvoices(){
     // (blank until a Date Sent is recorded), unless manually overridden here.
     // N is normally 30, but some clients have their own payment terms.
     const dueDate = meta?.dueDate || (dateSent ? addWorkingDaysISO(dateSent, paymentTermsDaysFor(g.company)) : '');
-    return { ...g, status, dateSent, dueDate, paymentDate: meta?.paymentDate || '' };
+    return { ...g, status, dateSent, dueDate, paymentDate: meta?.paymentDate || '', shareToken: meta?.shareToken || '' };
   });
 }
 function populateTrackFilterOptions(rows){
@@ -1029,6 +1039,8 @@ function renderInvoiceTracking(){
       <td><input type="date" class="trackPaymentDate" data-invoice="${r.invoice.replace(/"/g,'&quot;')}" value="${r.paymentDate||''}"></td>
       <td class="row-actions">
         <button onclick="window.open('invoice.html?${new URLSearchParams({ws:WORKSPACE,inv:r.invoice})}','_blank')">View Invoice</button>
+        <button class="copyShareLink" data-invoice="${r.invoice.replace(/"/g,'&quot;')}">Copy Link</button>
+        ${r.shareToken ? `<button class="revokeShareLink del" data-invoice="${r.invoice.replace(/"/g,'&quot;')}">Revoke Link</button>` : ''}
         ${r.salesReceipt ? `<button onclick="window.open('receipt.html?${new URLSearchParams({ws:WORKSPACE,rcpt:r.salesReceipt})}','_blank')">View Receipt</button>` : ''}
       </td>
     </tr>`;
@@ -1081,6 +1093,41 @@ document.querySelector('#invoiceTrackingTable tbody').addEventListener('change',
     if(e.target.checked) selectedTrackInvoices.add(inv); else selectedTrackInvoices.delete(inv);
     document.getElementById('trackSelectAll').checked = [...document.querySelectorAll('.track-check')].every(c=>c.checked);
     updateTrackMarkPaidBtnLabel();
+  }
+});
+// Public, view-only customer links: a random token stored on invoice_meta,
+// opened as invoice.html?ws=...&t=<token> (see get_shared_invoice() in
+// supabase_invoice_share_links.sql). Revoking clears the token.
+function shareUrlFor(token){
+  const url = new URL('invoice.html', location.href);
+  url.search = new URLSearchParams({ws:WORKSPACE, t:token}).toString();
+  return url.href;
+}
+document.querySelector('#invoiceTrackingTable tbody').addEventListener('click', async (e)=>{
+  const copyBtn = e.target.closest('.copyShareLink');
+  const revokeBtn = e.target.closest('.revokeShareLink');
+  const findMeta = inv => (DATA.invoiceMeta||[]).find(m=>m.invoice===inv);
+  if(copyBtn){
+    const invoice = copyBtn.dataset.invoice;
+    let token = findMeta(invoice)?.shareToken;
+    if(!token){
+      token = crypto.randomUUID().replace(/-/g,'') + crypto.randomUUID().replace(/-/g,'');
+      await upsertInvoiceMeta(invoice, {shareToken: token});
+      if(findMeta(invoice)?.shareToken !== token) return; // save failed — error already shown
+      renderInvoiceTracking();
+    }
+    const url = shareUrlFor(token);
+    try{
+      await navigator.clipboard.writeText(url);
+      alert('Customer link copied. Anyone with this link can view this invoice (view only).');
+    }catch(err){
+      prompt('Copy this customer link:', url);
+    }
+  } else if(revokeBtn){
+    const invoice = revokeBtn.dataset.invoice;
+    if(!confirm(`Revoke the customer link for ${invoice}? The old link will stop working.`)) return;
+    await upsertInvoiceMeta(invoice, {shareToken: null});
+    renderInvoiceTracking();
   }
 });
 document.getElementById('trackSelectAll').addEventListener('change', e=>{
@@ -1534,7 +1581,9 @@ function recalc(){
       const payoutAlan = document.getElementById('f_payoutAlan').value;
       document.getElementById('f_coyFund').value = payoutAlan === '' ? '' : (Number(payoutAlan)||0).toFixed(2);
     } else {
-      document.getElementById('f_coyFund').value = cost ? (cost - payout).toFixed(2) : '';
+      // ELITE: Payout to Alan also comes out of the company's share.
+      const alan = WORKSPACE === 'nonmaersk' ? (Number(document.getElementById('f_payoutAlan').value)||0) : 0;
+      document.getElementById('f_coyFund').value = cost ? (cost - payout - alan).toFixed(2) : '';
     }
   }
 }
