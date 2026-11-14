@@ -1576,15 +1576,9 @@ function recalc(){
 
   const payout = Number(document.getElementById('f_payout').value)||0;
   if(!coyFundEdited){
-    // Sharon's jobs default Coy Fund to Payout to Alan instead of Cost - Driver Payout.
-    if(WORKSPACE === 'nonmaersk' && isSharonHost(document.getElementById('f_client').value)){
-      const payoutAlan = document.getElementById('f_payoutAlan').value;
-      document.getElementById('f_coyFund').value = payoutAlan === '' ? '' : (Number(payoutAlan)||0).toFixed(2);
-    } else {
-      // ELITE: Payout to Alan also comes out of the company's share.
-      const alan = WORKSPACE === 'nonmaersk' ? (Number(document.getElementById('f_payoutAlan').value)||0) : 0;
-      document.getElementById('f_coyFund').value = cost ? (cost - payout - alan).toFixed(2) : '';
-    }
+    // ELITE: Payout to Alan also comes out of the company's share (same for every host).
+    const alan = WORKSPACE === 'nonmaersk' ? (Number(document.getElementById('f_payoutAlan').value)||0) : 0;
+    document.getElementById('f_coyFund').value = cost ? (cost - payout - alan).toFixed(2) : '';
   }
 }
 ['f_qty','f_unitCost','f_payout'].forEach(id=>document.getElementById(id).addEventListener('input', recalc));
