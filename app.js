@@ -1520,7 +1520,7 @@ function fmtOptionLabel(o){
 // MISCELLANEOUS and ADDITIONAL STOP (any variant) both take a free-text
 // description, since neither is specific enough on its own.
 function optionTypeNeedsNote(v){
-  return v === 'MISCELLANEOUS' || v === '杂项' || /^ADDITIONAL STOP/i.test(v||'') || /^MIDNIGHT SURCHARGE/i.test(v||'');
+  return v === 'MISCELLANEOUS' || v === '杂项费用' || /^ADDITIONAL STOP/i.test(v||'') || /^MIDNIGHT SURCHARGE/i.test(v||'');
 }
 function updateOptionNoteVisibility(row){
   const noteEl = row.querySelector('.optionNote');
