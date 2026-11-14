@@ -1595,9 +1595,10 @@ document.getElementById('f_cost').addEventListener('input', ()=>{
 });
 document.getElementById('f_coyFund').addEventListener('input', ()=>{ coyFundEdited = true; });
 
-// For HOURLY job types, derive Qty from Start/End time (billed in whole-hour blocks, rounded up)
+// For HOURLY job types (incl. ELITE's 包车服务 and 导游服务 (每小时)), derive Qty from
+// Start/End time (billed in whole-hour blocks, rounded up) and show a TIME line.
 function isHourlyJobType(jt){
-  return !!jt && jt.toUpperCase().includes('HOURLY');
+  return /HOURLY|包车服务|每小时/i.test(jt||'');
 }
 // TOUR GUIDE assignees are guides, not drivers — don't label them as DRIVER in trip details.
 function isTourGuideJobType(jt){

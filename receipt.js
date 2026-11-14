@@ -46,7 +46,7 @@ function extractPax(text){
   const m = (text||'').match(/^[ \t]*PAX[ \t]*:[ \t]*(.+)$/im);
   return m ? m[1].trim() : null;
 }
-function isHourlyJobType(jobType){ return /HOURLY/i.test(jobType||''); }
+function isHourlyJobType(jobType){ return /HOURLY|包车服务|每小时/i.test(jobType||''); }
 function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // Same line-item description logic as buildItemDescription() in app.js.
