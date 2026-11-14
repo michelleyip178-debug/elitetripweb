@@ -61,19 +61,22 @@ function buildItemDescription(job, drivers){
     if(job.uid) lines.push(`UID: ${job.uid}`);
     if(job.costCentre) lines.push(`COST CENTRE: ${job.costCentre}`);
   }
+  // Chinese-language jobs (Chinese Job Type) get Chinese labels, line by line.
+  const zh = /[一-鿿]/.test(job.jobType||'');
+  const L = zh ? {pax:'人数：', driver:'司机姓名：', time:'时间：'} : {pax:'PAX: ', driver:'DRIVER NAME: ', time:'TIME: '};
   const route = extractRoute(job.details);
   if(route) lines.push(route);
   const pax = extractPax(job.details);
-  if(pax) lines.push(`PAX: ${pax}`);
+  if(pax) lines.push(`${L.pax}${pax}`);
   if(job.driver){
     const d = (drivers||[]).find(x=>x.name===job.driver);
     const plate = job.vehicle && !d ? job.vehicle : (d?.plate || '');
-    lines.push(`DRIVER NAME: ${job.driver}${plate?` (${plate})`:''}`);
+    lines.push(`${L.driver}${job.driver}${plate?` (${plate})`:''}`);
   }
   if(job.startTime && isHourlyJobType(job.jobType)){
     const s = job.startTime.replace(':','');
     const e = job.endTime ? job.endTime.replace(':','') : '';
-    lines.push(`TIME: ${s}${e?` - ${e}`:''}`);
+    lines.push(`${L.time}${s}${e?` - ${e}`:''}`);
   }
   return lines.join('\n');
 }
