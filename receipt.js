@@ -160,8 +160,9 @@ async function init(){
       </tr>${addonRows}`;
     }).join('') + (creditCardTotal > 0 ? `<tr><td></td><td>CREDIT CARD CHARGES</td><td>CREDIT CARD CHARGES (10%)</td><td class="num">1</td><td class="num">${fmtMoney(creditCardTotal)}</td><td class="num">${fmtMoney(creditCardTotal)}</td></tr>` : '');
 
-    const billToLines = [isRealCompany(company) ? company : hostName];
-    if(isRealCompany(company) && hostName) billToLines.push(hostName);
+    // Host name first, then the company; skip the company if it just repeats the host name.
+    const billToLines = [hostName];
+    if(isRealCompany(company) && company.trim().toUpperCase() !== hostName.trim().toUpperCase()) billToLines.push(company);
     if(client?.billingAddress) billToLines.push(client.billingAddress);
     if(client?.uen) billToLines.push(`UEN: ${client.uen}`);
 
