@@ -186,7 +186,7 @@
       <div class="field">
         <label>Qty</label>
         <input type="number" id="f_qty" step="any">
-        <div class="hint" id="qtyHint" style="display:none;font-size:12px;color:var(--muted);margin-top:5px;">Auto-set from Start/End time (hourly jobs)</div>
+        <div class="hint" id="qtyHint" style="display:none;font-size:12px;color:var(--muted);margin-top:5px;">Auto-set from Start/End time (hourly jobs; 16th minute rounds up)</div>
       </div>
       <div class="field">
         <label>Unit Cost (S$)</label>
@@ -700,7 +700,8 @@ function updateQtyFromTime(){
   let diff = (eh*60+em) - (sh*60+sm);
   if(diff <= 0) diff += 24*60; // job runs past midnight
   const hours = diff/60;
-  const qty = Math.max(1, Math.ceil(hours - 1e-9)); // round up to next full hour block
+  // 15-minute grace: up to 15 min past the hour keeps the qty; the 16th minute rounds up
+  const qty = Math.max(1, Math.floor(diff/60) + (diff%60 > 15 ? 1 : 0));
   document.getElementById('f_qty').value = qty;
 }
 ['f_start_h','f_start_m','f_end_h','f_end_m'].forEach(id=>document.getElementById(id).addEventListener('change', updateQtyFromTime));

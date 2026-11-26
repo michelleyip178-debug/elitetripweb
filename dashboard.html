@@ -364,7 +364,7 @@
       <div><label>Start Time</label><input type="text" id="f_start" placeholder="HH:MM" inputmode="numeric" maxlength="5"></div>
       <div><label>End Time</label><input type="text" id="f_end" placeholder="HH:MM" inputmode="numeric" maxlength="5"></div>
 
-      <div><label>Qty</label><input type="number" id="f_qty" step="any" value="1"><div class="small muted" id="qtyHint" style="display:none;margin-top:3px;">Auto-set from Start/End time for hourly jobs (rounds up to the next full hour)</div></div>
+      <div><label>Qty</label><input type="number" id="f_qty" step="any" value="1"><div class="small muted" id="qtyHint" style="display:none;margin-top:3px;">Auto-set from Start/End time for hourly jobs (15-min grace; the 16th minute rounds up to the next hour)</div></div>
       <div><label>Unit Cost (S$)</label><input type="number" id="f_unitCost" step="any"><div class="small muted" id="unitCostHint" style="display:none;margin-top:3px;">Auto-filled from Job Type / Vehicle rate card</div></div>
 
       <div><label>Total Cost (S$)</label><input type="number" id="f_cost" step="any"><div class="small muted" id="costHint" style="margin-top:3px;">Defaults to Qty × Unit Cost + Additional Options; editable to override</div></div>
