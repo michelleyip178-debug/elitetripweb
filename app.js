@@ -17,17 +17,15 @@ if(WORKSPACE === 'nonmaersk'){
   // Payout to Alan is a manual field specific to ELITE jobs.
   const el = document.getElementById('payoutAlanFieldWrap');
   if(el) el.style.display = 'none';
-  const hpEl = document.getElementById('hitpayFeeFieldWrap');
-  if(hpEl) hpEl.style.display = 'none';
   // Total Cost is only overridable for ELITE — keep it strictly derived for MAERSK.
   const costEl = document.getElementById('f_cost');
   if(costEl){ costEl.readOnly = true; costEl.style.background = '#f5f6f8'; }
   const costHint = document.getElementById('costHint');
   if(costHint) costHint.textContent = 'Qty × Unit Cost + Additional Options';
 }
-if(WORKSPACE === 'nonmaersk'){
+{
   const coyHint = document.getElementById('coyFundHint');
-  if(coyHint) coyHint.textContent = 'Defaults to Total Cost − Driver Payout − Payout to Alan − Hitpay Admin Fee; editable to override';
+  if(coyHint) coyHint.textContent = WORKSPACE === 'nonmaersk' ? 'Defaults to Total Cost − Driver Payout − Payout to Alan − Hitpay Admin Fee; editable to override' : 'Defaults to Total Cost − Driver Payout − Hitpay Admin Fee; editable to override';
 }
 // .payoutAlan-col (th and dynamically-rendered td cells alike) is hidden by
 // default in CSS and only shown for ELITE via this body class.
@@ -532,7 +530,7 @@ function renderJobs(_skipFit){
       <td class="num fit-col">${fmtMoney(j.driverPayout)}</td>
       <td class="num fit-col">${fmtMoney(j.coyFund)}</td>
       <td class="num payoutAlan-col fit-col">${fmtMoney(j.payoutAlan)}</td>
-      <td class="num payoutAlan-col fit-col">${fmtMoney(j.hitpayFee)}</td>
+      <td class="num hitpay-col fit-col">${fmtMoney(j.hitpayFee)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>
@@ -550,7 +548,7 @@ function renderJobs(_skipFit){
       <td class="num fit-col">${fmtMoney(j.driverPayout)}</td>
       <td class="num fit-col">${fmtMoney(j.coyFund)}</td>
       <td class="num payoutAlan-col fit-col">${fmtMoney(j.payoutAlan)}</td>
-      <td class="num payoutAlan-col fit-col">${fmtMoney(j.hitpayFee)}</td>
+      <td class="num hitpay-col fit-col">${fmtMoney(j.hitpayFee)}</td>
       <td><span class="pill ${statusClass(j.paymentStatus)}">${(j.paymentStatus||'UNPAID').toUpperCase()}</span></td>
       <td class="row-actions"><button onclick="openJobModal(${j.id})">Edit</button></td>
     </tr>`).join('')}
@@ -1584,7 +1582,7 @@ function recalc(){
   if(!coyFundEdited){
     // ELITE: Payout to Alan also comes out of the company's share (same for every host).
     const alan = WORKSPACE === 'nonmaersk' ? (Number(document.getElementById('f_payoutAlan').value)||0) : 0;
-    const hitpay = WORKSPACE === 'nonmaersk' ? (Number(document.getElementById('f_hitpayFee').value)||0) : 0;
+    const hitpay = Number(document.getElementById('f_hitpayFee').value)||0;
     document.getElementById('f_coyFund').value = cost ? (cost - payout - alan - hitpay).toFixed(2) : '';
   }
 }
@@ -1724,7 +1722,7 @@ async function openJobModal(id){
   document.getElementById('f_payout').value = job?.driverPayout ?? '';
   document.getElementById('f_coyFund').value = job?.coyFund ?? '';
   if(WORKSPACE === 'nonmaersk') document.getElementById('f_payoutAlan').value = job?.payoutAlan ?? '';
-  if(WORKSPACE === 'nonmaersk') document.getElementById('f_hitpayFee').value = job?.hitpayFee ?? '';
+  document.getElementById('f_hitpayFee').value = job?.hitpayFee ?? '';
   // Always re-enable auto-calc on open, even if the stored value happens to
   // differ from the formula (stale data self-heals the moment a dependent
   // field changes) — only actual typing into the field locks it again.
@@ -1819,7 +1817,7 @@ document.getElementById('saveJobBtn').addEventListener('click', async ()=>{
     remarks: document.getElementById('f_remarks').value,
   };
   if(WORKSPACE === 'nonmaersk') job.payoutAlan = Number(document.getElementById('f_payoutAlan').value)||0;
-  if(WORKSPACE === 'nonmaersk'){
+  {
     const hp = document.getElementById('f_hitpayFee').value;
     // Only send the column when used, so saving still works before the SQL migration is run.
     if(hp !== '' || ((DATA.jobs.find(x=>x.id===editingId)||{}).hitpayFee != null)) job.hitpayFee = Number(hp)||0;

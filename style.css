@@ -42,8 +42,8 @@
   td.time-col{width:60px;}
   th.fit-col{white-space:normal;width:80px;text-align:center;}
   td.fit-col{width:80px;}
-  th.payoutAlan-col.fit-col{width:105px;}
-  td.payoutAlan-col.fit-col{width:105px;}
+  th.payoutAlan-col.fit-col,th.hitpay-col.fit-col{width:105px;}
+  td.payoutAlan-col.fit-col,td.hitpay-col.fit-col{width:105px;}
   .sortArrow{display:inline-block;margin-left:4px;font-size:10px;opacity:.35;}
   .sortArrow.active{opacity:1;color:var(--accent);}
   .num{text-align:right;font-variant-numeric:tabular-nums;}
